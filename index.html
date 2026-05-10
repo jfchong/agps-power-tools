@@ -3,312 +3,642 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JF's Power Tools - AGPS Service Provider Listing</title>
+  <title>JF's Power Tools — AGPS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
-    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    .glass { background: rgba(255,255,255,.82); backdrop-filter: blur(14px); }
-    .focus-ring:focus { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.25); border-color: rgb(37,99,235); }
-    @keyframes confetti-fall {
-      0%   { transform: translateY(-60px) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    /* ── DESIGN TOKENS ──────────────────────────────────────── */
+    :root {
+      --bg:            oklch(0.965 0.006 265);
+      --surface:       oklch(1 0 0);
+      --surface-2:     oklch(0.970 0.004 265);
+      --border:        oklch(0.880 0.010 265);
+      --border-subtle: oklch(0.930 0.005 265);
+      --primary:       oklch(0.52 0.260 265);
+      --primary-h:     oklch(0.46 0.260 265);
+      --primary-lt:    oklch(0.94 0.060 265);
+      --accent:        oklch(0.72 0.175 58);
+      --accent-lt:     oklch(0.96 0.060 80);
+      --text:          oklch(0.16 0.018 265);
+      --text-2:        oklch(0.40 0.012 265);
+      --text-3:        oklch(0.60 0.008 265);
+      --ok:            oklch(0.52 0.165 155);
+      --ok-lt:         oklch(0.94 0.050 155);
+      --danger:        oklch(0.55 0.215 25);
+      --danger-lt:     oklch(0.96 0.055 25);
+      --warn:          oklch(0.62 0.160 58);
+      --warn-lt:       oklch(0.96 0.055 80);
+      --shadow-sm: 0 1px 3px oklch(0.16 0.018 265 / .07), 0 1px 2px oklch(0.16 0.018 265 / .04);
+      --shadow:    0 4px 14px oklch(0.16 0.018 265 / .08), 0 2px 6px oklch(0.16 0.018 265 / .05);
+      --shadow-lg: 0 16px 40px oklch(0.16 0.018 265 / .13), 0 4px 14px oklch(0.16 0.018 265 / .08);
+      --r-sm: 8px; --r: 12px; --r-lg: 16px; --r-xl: 22px;
     }
-    .confetti-piece { position: fixed; width: 10px; height: 10px; border-radius: 2px; animation: confetti-fall linear forwards; pointer-events: none; z-index: 9999; }
-    @keyframes celebrate-pop {
-      0%   { transform: scale(0.5); opacity: 0; }
-      60%  { transform: scale(1.08); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; -webkit-font-smoothing: antialiased;
     }
-    .celebrate-pop { animation: celebrate-pop 0.45s cubic-bezier(.175,.885,.32,1.275) forwards; }
+    .font-display { font-family: 'Syne', system-ui, sans-serif; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── TYPOGRAPHY ─────────────────────────────────────────── */
+    .label {
+      display: block; font-size: 11px; font-weight: 700;
+      letter-spacing: .07em; text-transform: uppercase;
+      color: var(--text-2); margin-bottom: 6px;
+    }
+
+    /* ── INPUTS ─────────────────────────────────────────────── */
+    .inp {
+      width: 100%; background: var(--surface);
+      border: 1.5px solid var(--border); border-radius: var(--r-sm);
+      padding: 10px 14px; font-family: inherit; font-size: 14px;
+      color: var(--text); transition: border-color .15s, box-shadow .15s;
+    }
+    .inp:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px oklch(0.52 0.26 265 / .12); }
+    .inp::placeholder { color: var(--text-3); }
+    select.inp { cursor: pointer; }
+    textarea.inp { resize: vertical; }
+
+    /* ── MULTI-SITE SELECT ──────────────────────────────────── */
+    .multisite-wrap { position: relative; }
+    .multisite-trigger {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      min-height: 42px; padding: 6px 14px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--r-sm); cursor: pointer;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .multisite-trigger:focus-within,
+    .multisite-trigger.open { border-color: var(--primary); box-shadow: 0 0 0 3px oklch(0.52 0.26 265 / .12); }
+    .multisite-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--primary-lt); color: var(--primary);
+      font-size: 12px; font-weight: 600;
+    }
+    .multisite-tag button { background: none; border: none; cursor: pointer; padding: 0; color: var(--primary); line-height: 1; font-size: 14px; }
+    .multisite-placeholder { color: var(--text-3); font-size: 14px; }
+    .multisite-dropdown {
+      position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--r); box-shadow: var(--shadow);
+      max-height: 200px; overflow-y: auto; padding: 6px;
+    }
+    .multisite-option {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      border-radius: var(--r-sm); cursor: pointer; font-size: 13.5px;
+      color: var(--text); transition: background .1s;
+    }
+    .multisite-option:hover { background: var(--surface-2); }
+    .multisite-option input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer; }
+
+    /* ── BUTTONS ────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 18px; border: none; border-radius: var(--r-sm);
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      transition: all .15s cubic-bezier(.16,1,.3,1);
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-h); transform: translateY(-1px); box-shadow: var(--shadow); }
+    .btn-primary:active { transform: none; box-shadow: none; }
+    .btn-ghost { background: transparent; color: var(--text-2); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+    .btn-ok { background: var(--ok); color: #fff; }
+    .btn-ok:hover { background: oklch(0.46 0.165 155); transform: translateY(-1px); box-shadow: var(--shadow); }
+    .btn-ok:active { transform: none; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: oklch(0.66 0.175 58); transform: translateY(-1px); box-shadow: var(--shadow); }
+    .btn-danger-ghost { background: transparent; color: var(--danger); border: 1.5px solid oklch(0.55 0.215 25 / .3); }
+    .btn-danger-ghost:hover { background: var(--danger-lt); border-color: var(--danger); }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    .btn-xs { padding: 3px 9px; font-size: 11px; border-radius: 6px; }
+
+    /* ── BADGES ─────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+    }
+    .badge-primary  { background: var(--primary-lt); color: var(--primary); }
+    .badge-muted    { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border-subtle); }
+    .badge-ok       { background: var(--ok-lt); color: var(--ok); }
+
+    /* ── CARD ───────────────────────────────────────────────── */
+    .card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); }
+
+    /* ── COMPANY CARD ───────────────────────────────────────── */
+    .company-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+    .company-card:hover { box-shadow: var(--shadow); border-color: oklch(0.82 0.014 265); }
+    .company-toggle { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 18px 20px; font-family: inherit; }
+    .company-toggle:hover { background: var(--surface-2); }
+    .company-details { border-top: 1.5px solid var(--border-subtle); background: var(--surface-2); padding: 20px; }
+
+    /* Category accent border */
+    .cat-security    { border-left: 4px solid oklch(0.52 0.26 265); }
+    .cat-cleaning    { border-left: 4px solid oklch(0.52 0.22 200); }
+    .cat-risk        { border-left: 4px solid oklch(0.55 0.22 25); }
+    .cat-maintenance { border-left: 4px solid oklch(0.58 0.20 100); }
+    .cat-utilities   { border-left: 4px solid oklch(0.60 0.20 35); }
+    .cat-insurance   { border-left: 4px solid oklch(0.52 0.22 310); }
+    .cat-engineering { border-left: 4px solid oklch(0.50 0.18 155); }
+    .cat-other       { border-left: 4px solid oklch(0.65 0.01 265); }
+
+    /* Category badge colors */
+    .cbadge-security    { background: oklch(0.93 0.06 265); color: oklch(0.38 0.22 265); }
+    .cbadge-cleaning    { background: oklch(0.93 0.06 200); color: oklch(0.36 0.22 200); }
+    .cbadge-risk        { background: oklch(0.94 0.07 25);  color: oklch(0.44 0.20 25); }
+    .cbadge-maintenance { background: oklch(0.95 0.06 100); color: oklch(0.42 0.18 100); }
+    .cbadge-utilities   { background: oklch(0.94 0.07 35);  color: oklch(0.44 0.20 35); }
+    .cbadge-insurance   { background: oklch(0.93 0.06 310); color: oklch(0.40 0.20 310); }
+    .cbadge-engineering { background: oklch(0.94 0.06 155); color: oklch(0.40 0.18 155); }
+    .cbadge-other       { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border-subtle); }
+
+    /* ── PIC CARD ───────────────────────────────────────────── */
+    .pic-card { background: var(--surface); border: 1.5px solid var(--border-subtle); border-radius: var(--r-sm); padding: 12px 14px; transition: border-color .15s; }
+    .pic-card:hover { border-color: var(--border); }
+
+    /* Inline PIC row (in add-company modal) */
+    .inline-pic { background: var(--surface-2); border: 1.5px solid var(--border-subtle); border-radius: var(--r-sm); padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+    /* ── DETAIL TILE ────────────────────────────────────────── */
+    .detail-tile { background: var(--surface); border: 1.5px solid var(--border-subtle); border-radius: var(--r-sm); padding: 11px 13px; font-size: 13.5px; }
+
+    /* ── DROP ZONE ──────────────────────────────────────────── */
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--r-lg); background: var(--surface); cursor: pointer; transition: all .2s ease; }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--primary); background: var(--primary-lt); }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    .app-header { position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1.5px solid var(--border); }
+
+    /* ── MODAL ──────────────────────────────────────────────── */
+    .modal-overlay { position: fixed; inset: 0; z-index: 50; background: oklch(0.10 0.02 265 / .52); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-box { background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); width: 100%; animation: pop-in .3s cubic-bezier(.16,1,.3,1) forwards; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1.5px solid var(--border); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1.5px solid var(--border); display: flex; gap: 10px; }
+
+    /* ── SETTINGS ───────────────────────────────────────────── */
+    .settings-tab { padding: 12px 20px; font-size: 14px; font-weight: 600; background: none; border: none; border-bottom: 2.5px solid transparent; cursor: pointer; color: var(--text-3); transition: color .15s, border-color .15s; }
+    .settings-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .settings-tab:hover:not(.active) { color: var(--text-2); }
+    .stat-card { border-radius: var(--r); padding: 16px 18px; }
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; line-height: 1.1; }
+
+    /* ── TIMELINE ───────────────────────────────────────────── */
+    .tl-item { position: relative; padding-left: 26px; padding-bottom: 16px; }
+    .tl-item::before { content: ''; position: absolute; left: 6px; top: 18px; bottom: 0; width: 2px; background: var(--border); }
+    .tl-item:last-child::before { display: none; }
+    .tl-dot { position: absolute; left: 0; top: 12px; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 2.5px solid var(--bg); box-shadow: 0 0 0 2px var(--primary-lt); }
+    .tl-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); padding: 14px 16px; box-shadow: var(--shadow-sm); }
+
+    /* ── BANNERS ────────────────────────────────────────────── */
+    .banner { border-radius: var(--r-sm); border: 1.5px solid; padding: 11px 16px; font-size: 14px; font-weight: 500; }
+    .banner-info    { background: var(--primary-lt); border-color: oklch(0.52 0.26 265 / .25); color: var(--primary-h); }
+    .banner-success { background: var(--ok-lt); border-color: oklch(0.52 0.165 155 / .3); color: oklch(0.40 0.165 155); }
+    .banner-error   { background: var(--danger-lt); border-color: oklch(0.55 0.215 25 / .3); color: var(--danger); }
+
+    /* ── PROC ITEM ──────────────────────────────────────────── */
+    .proc-item { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r-sm); padding: 10px 14px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+    /* ── ANIMATIONS ─────────────────────────────────────────── */
+    @keyframes fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pop-in  { from { opacity: 0; transform: scale(.94) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes confetti-fall { 0% { transform: translateY(-60px) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+    @keyframes celebrate-pop { 0% { opacity: 0; transform: scale(.72) translateY(16px); } 62% { transform: scale(1.05) translateY(-3px); opacity: 1; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+    .confetti-piece { position: fixed; border-radius: 2px; animation: confetti-fall linear forwards; pointer-events: none; z-index: 9999; }
+    .celebrate-pop  { animation: celebrate-pop .42s cubic-bezier(.16,1,.3,1) forwards; }
+
+    #companyList > article { animation: fade-up .35s cubic-bezier(.16,1,.3,1) both; }
+    #companyList > article:nth-child(1)  { animation-delay:   0ms; }
+    #companyList > article:nth-child(2)  { animation-delay:  45ms; }
+    #companyList > article:nth-child(3)  { animation-delay:  90ms; }
+    #companyList > article:nth-child(4)  { animation-delay: 135ms; }
+    #companyList > article:nth-child(5)  { animation-delay: 180ms; }
+    #companyList > article:nth-child(n+6){ animation-delay: 220ms; }
+
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; animation: pulse-dot 2s ease-in-out infinite; }
   </style>
 </head>
-<body class="min-h-screen bg-slate-100 text-slate-900">
+<body>
 
-  <!-- ── MAIN LAYOUT ─────────────────────────────────────────── -->
-  <div class="max-w-7xl mx-auto p-4 sm:p-6">
-    <header class="mb-4">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">JF's Power Tools</h1>
-          <p class="text-sm sm:text-base text-slate-600 font-medium">[AGPS] AI Powered Service Provider Listing</p>
-          <p class="text-xs text-slate-500 mt-1">Online edition. Data syncs through Supabase.</p>
-        </div>
-        <div class="flex flex-wrap gap-2 items-center">
-          <button id="refreshBtn" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm font-semibold hover:bg-slate-50">Sync</button>
-          <button id="settingsBtn" class="px-3 py-2 rounded-lg bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800 flex items-center gap-1">⚙ Settings</button>
-        </div>
+  <!-- ══ HEADER ════════════════════════════════════════════════ -->
+  <header class="app-header">
+    <div class="max-w-7xl mx-auto px-5 py-3 flex items-center justify-between gap-4">
+      <div class="min-w-0">
+        <h1 class="font-display text-xl font-bold tracking-tight leading-tight" style="color:var(--text)">JF's Power Tools</h1>
+        <p class="text-xs" style="color:var(--text-3);margin-top:1px">AGPS · AI Powered Service Provider Listing</p>
       </div>
-    </header>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="status-dot"></span>
+        <span id="syncStatus" class="text-xs" style="color:var(--text-3)">Ready</span>
+        <button id="refreshBtn" class="btn btn-ghost btn-sm ml-1">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m0 0a9 9 0 0 1 9-9"/></svg>
+          Sync
+        </button>
+        <button id="settingsBtn" class="btn btn-primary btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings
+        </button>
+      </div>
+    </div>
+  </header>
 
-    <div id="banner" class="hidden mb-4 rounded-lg border px-4 py-3 text-sm"></div>
+  <!-- ══ MAIN ══════════════════════════════════════════════════ -->
+  <main class="max-w-7xl mx-auto px-5 py-6 space-y-5">
 
-    <section class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 mb-4">
-      <div class="glass border border-white rounded-xl p-4 shadow-sm">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label class="block">
-            <span class="block text-xs font-bold uppercase text-slate-600 mb-1">BM Name</span>
-            <input id="uploaderName" class="focus-ring w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" placeholder="e.g. Chong" />
+    <div id="banner" class="hidden banner"></div>
+
+    <!-- Upload + manual entry row -->
+    <section class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+      <!-- BM + Site -->
+      <div class="card p-5">
+        <p class="font-display font-bold text-base mb-4" style="color:var(--text)">Upload Details</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label>
+            <span class="label">BM Name</span>
+            <input id="uploaderName" class="inp" placeholder="e.g. Chong" />
           </label>
-          <label class="block">
-            <span class="block text-xs font-bold uppercase text-slate-600 mb-1">Site / Development</span>
+          <div>
+            <span class="label">Site / Development</span>
             <div class="flex gap-2">
-              <select id="siteSelect" class="focus-ring min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 bg-white">
-                <option value="">Select a site...</option>
-              </select>
-              <button id="addSiteBtn" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">Add</button>
+              <!-- Multi-site selector for upload -->
+              <div class="multisite-wrap flex-1 min-w-0" id="uploadSiteWrap">
+                <div class="multisite-trigger" id="uploadSiteTrigger" tabindex="0">
+                  <span class="multisite-placeholder" id="uploadSitePlaceholder">Select site(s)…</span>
+                </div>
+                <div class="multisite-dropdown hidden" id="uploadSiteDropdown"></div>
+              </div>
+              <button id="addSiteBtn" class="btn btn-ghost btn-sm shrink-0">+ Add</button>
             </div>
-          </label>
+          </div>
+        </div>
+        <div class="mt-4 pt-4" style="border-top:1.5px solid var(--border-subtle)">
+          <button id="addCompanyManualBtn" class="btn btn-accent btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Company Manually
+          </button>
+          <span class="text-xs ml-3" style="color:var(--text-3)">No file upload needed</span>
         </div>
       </div>
 
-      <div id="dropZone" class="glass border-2 border-dashed border-blue-200 rounded-xl p-4 shadow-sm text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/60">
+      <!-- Drop zone -->
+      <div id="dropZone" class="drop-zone flex flex-col items-center justify-center p-6 text-center gap-2">
         <input id="fileInput" type="file" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,.doc,.docx" />
-        <div class="font-bold text-slate-800">Upload Files</div>
-        <p class="text-xs text-slate-500 mt-1">PDF, image, text, CSV, or DOCX</p>
-        <button class="mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">Choose Files</button>
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--primary-lt);display:flex;align-items:center;justify-content:center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div>
+          <p class="font-semibold text-sm" style="color:var(--text)">AI Extract from File</p>
+          <p class="text-xs mt-0.5" style="color:var(--text-3)">PDF, image, Word, CSV, text</p>
+        </div>
+        <button class="btn btn-primary btn-sm mt-1">Choose Files</button>
       </div>
     </section>
 
-    <section id="processingPanel" class="hidden mb-4 glass border border-white rounded-xl p-4 shadow-sm">
-      <h2 class="font-bold mb-2">Processing</h2>
-      <div id="processingList" class="space-y-2 text-sm"></div>
+    <!-- Processing panel -->
+    <section id="processingPanel" class="hidden card p-5">
+      <p class="font-display font-bold text-sm mb-3" style="color:var(--text)">Processing</p>
+      <div id="processingList" class="space-y-2"></div>
     </section>
 
-    <section class="glass border border-white rounded-xl p-4 shadow-sm mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-3">
-        <input id="searchInput" class="focus-ring rounded-lg border border-slate-300 px-3 py-2 bg-white" placeholder="Search company, PIC, position..." />
-        <select id="categoryFilter" class="focus-ring rounded-lg border border-slate-300 px-3 py-2 bg-white">
+    <!-- Search + filter -->
+    <section class="card p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-3">
+        <div class="relative">
+          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3)" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="searchInput" class="inp" style="padding-left:36px" placeholder="Search company, contact, position…" />
+        </div>
+        <select id="categoryFilter" class="inp">
           <option value="All">All Categories</option>
         </select>
       </div>
-      <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 text-sm">
-        <span><strong id="resultCount">0</strong> results</span>
-        <span id="syncStatus" class="text-xs text-slate-500">Ready</span>
+      <div class="flex items-center justify-between mt-3 pt-3" style="border-top:1.5px solid var(--border-subtle)">
+        <span class="text-sm" style="color:var(--text-2)"><strong id="resultCount" style="color:var(--text)">0</strong> results</span>
+        <span id="syncStatus2" class="text-xs" style="color:var(--text-3)"></span>
       </div>
     </section>
 
-    <main id="companyList" class="space-y-3"></main>
-  </div>
+    <!-- Company list -->
+    <div id="companyList" class="space-y-3"></div>
 
-  <!-- ── LOGIN MODAL ─────────────────────────────────────────── -->
-  <div id="loginModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-      <h2 class="text-lg font-bold mb-1">Settings Login</h2>
-      <p class="text-xs text-slate-500 mb-4">Admin access required.</p>
-      <label class="block mb-3">
-        <span class="text-xs font-bold uppercase text-slate-500">Username</span>
-        <input id="loginUser" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" placeholder="JF Chong" />
-      </label>
-      <label class="block mb-4">
-        <span class="text-xs font-bold uppercase text-slate-500">Password</span>
-        <input id="loginPass" type="password" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" placeholder="••••••••" />
-      </label>
-      <p id="loginError" class="hidden text-red-600 text-sm mb-3">Incorrect username or password.</p>
-      <div class="flex gap-2">
-        <button id="loginSubmitBtn" class="flex-1 py-2 rounded-lg bg-slate-800 text-white font-semibold hover:bg-slate-900">Login</button>
-        <button id="loginCancelBtn" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50">Cancel</button>
+  </main>
+
+  <!-- ══ ADD COMPANY MANUALLY MODAL ════════════════════════════ -->
+  <div id="addCompanyModal" class="hidden modal-overlay">
+    <div class="modal-box flex flex-col" style="max-width:580px;max-height:92vh">
+      <div class="modal-header shrink-0">
+        <div>
+          <h2 class="font-display font-bold text-lg">Add Company Manually</h2>
+          <p class="text-xs mt-0.5" style="color:var(--text-3)">No file upload needed — enter details directly.</p>
+        </div>
+        <button id="addCompanyCancelBtn" class="btn btn-ghost btn-sm" style="padding:6px 10px">✕</button>
+      </div>
+      <div class="modal-body flex-1 overflow-y-auto space-y-4">
+        <label>
+          <span class="label">Company Name <span style="color:var(--danger)">*</span></span>
+          <input id="manualCompanyName" class="inp" placeholder="e.g. ABC Security Sdn Bhd" />
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label>
+            <span class="label">Category</span>
+            <select id="manualCompanyCategory" class="inp"></select>
+          </label>
+          <div>
+            <span class="label">Site(s)</span>
+            <div class="multisite-wrap" id="manualSiteWrap">
+              <div class="multisite-trigger" id="manualSiteTrigger" tabindex="0">
+                <span class="multisite-placeholder" id="manualSitePlaceholder">Select site(s)…</span>
+              </div>
+              <div class="multisite-dropdown hidden" id="manualSiteDropdown"></div>
+            </div>
+          </div>
+        </div>
+        <label>
+          <span class="label">Address</span>
+          <input id="manualCompanyAddress" class="inp" placeholder="Full address" />
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label>
+            <span class="label">Phone</span>
+            <input id="manualCompanyPhone" class="inp" placeholder="03-xxxx xxxx" />
+          </label>
+          <label>
+            <span class="label">Email</span>
+            <input id="manualCompanyEmail" class="inp" placeholder="info@company.com" />
+          </label>
+        </div>
+        <label>
+          <span class="label">Website</span>
+          <input id="manualCompanyWebsite" class="inp" placeholder="https://…" />
+        </label>
+        <label>
+          <span class="label">Description</span>
+          <textarea id="manualCompanyDesc" rows="2" class="inp" placeholder="Brief description of services…"></textarea>
+        </label>
+        <label>
+          <span class="label">Comments</span>
+          <textarea id="manualCompanyComments" rows="2" class="inp" placeholder="Internal notes…"></textarea>
+        </label>
+
+        <!-- Inline PIC builder -->
+        <div style="border-top:1.5px solid var(--border-subtle);padding-top:16px">
+          <div class="flex items-center justify-between mb-3">
+            <span class="label" style="margin-bottom:0">Persons in Charge</span>
+          </div>
+          <div id="manualPicList" class="space-y-2 mb-3"></div>
+          <!-- Add PIC mini-form -->
+          <div style="background:var(--surface-2);border:1.5px solid var(--border-subtle);border-radius:var(--r);padding:14px">
+            <p class="text-xs font-semibold mb-3" style="color:var(--text-2)">Add a contact:</p>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <label>
+                <span class="label">Name</span>
+                <input id="manualPicName" class="inp" placeholder="Full name" />
+              </label>
+              <label>
+                <span class="label">Position</span>
+                <input id="manualPicPosition" class="inp" placeholder="Job title" />
+              </label>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <label>
+                <span class="label">Phone</span>
+                <input id="manualPicPhone" class="inp" placeholder="012-xxx xxxx" />
+              </label>
+              <label>
+                <span class="label">Email</span>
+                <input id="manualPicEmail" class="inp" placeholder="person@company.com" />
+              </label>
+            </div>
+            <button id="manualAddPicBtn" class="btn btn-ghost btn-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add to List
+            </button>
+          </div>
+        </div>
+        <p id="manualCompanyError" class="hidden text-sm font-medium" style="color:var(--danger)">Company name is required.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="manualCompanySaveBtn" class="btn btn-ok flex-1">Save Company</button>
+        <button id="addCompanyCancelBtn2" class="btn btn-ghost">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- ── SETTINGS PANEL ──────────────────────────────────────── -->
-  <div id="settingsPanel" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-      <!-- header -->
-      <div class="flex items-center justify-between p-5 border-b border-slate-200 shrink-0">
+  <!-- ══ LOGIN MODAL ════════════════════════════════════════════ -->
+  <div id="loginModal" class="hidden modal-overlay">
+    <div class="modal-box" style="max-width:380px">
+      <div class="modal-header">
         <div>
-          <h2 class="text-lg font-bold">Settings</h2>
-          <p class="text-xs text-slate-500">Admin: JF Chong</p>
+          <h2 class="font-display font-bold text-lg">Admin Login</h2>
+          <p class="text-xs mt-0.5" style="color:var(--text-3)">Settings require admin access.</p>
+        </div>
+        <button id="loginCancelBtn" class="btn btn-ghost btn-sm" style="padding:6px 10px">✕</button>
+      </div>
+      <div class="modal-body space-y-4">
+        <label>
+          <span class="label">Username</span>
+          <input id="loginUser" class="inp" placeholder="JF Chong" />
+        </label>
+        <label>
+          <span class="label">Password</span>
+          <input id="loginPass" type="password" class="inp" placeholder="••••••••" />
+        </label>
+        <p id="loginError" class="hidden text-sm font-medium" style="color:var(--danger)">Incorrect username or password.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="loginSubmitBtn" class="btn btn-primary flex-1">Login</button>
+        <button id="loginCancelBtn2" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SETTINGS PANEL ════════════════════════════════════════ -->
+  <div id="settingsPanel" class="hidden modal-overlay">
+    <div class="modal-box flex flex-col" style="max-width:680px;max-height:90vh">
+      <div class="modal-header shrink-0">
+        <div>
+          <h2 class="font-display font-bold text-lg">Settings</h2>
+          <p class="text-xs mt-0.5" style="color:var(--text-3)">Admin: JF Chong</p>
         </div>
         <div class="flex gap-2">
-          <button id="exportCsvBtn" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">Export CSV</button>
-          <button id="settingsLogoutBtn" class="px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold hover:bg-slate-50">Logout</button>
-          <button id="settingsCloseBtn" class="px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold hover:bg-slate-50">✕</button>
+          <button id="exportCsvBtn" class="btn btn-ok btn-sm">Export CSV</button>
+          <button id="settingsLogoutBtn" class="btn btn-ghost btn-sm">Logout</button>
+          <button id="settingsCloseBtn" class="btn btn-ghost btn-sm" style="padding:6px 10px">✕</button>
         </div>
       </div>
-      <!-- tabs -->
-      <div class="flex border-b border-slate-200 shrink-0">
-        <button id="tabCostBtn" class="px-5 py-3 text-sm font-semibold border-b-2 border-blue-600 text-blue-700">💰 API Costs</button>
-        <button id="tabLogBtn"  class="px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">📋 Activity Log</button>
+      <div class="flex shrink-0" style="border-bottom:1.5px solid var(--border)">
+        <button id="tabCostBtn" class="settings-tab active">💰 API Costs</button>
+        <button id="tabLogBtn"  class="settings-tab">📋 Activity Log</button>
       </div>
-      <!-- cost tab -->
       <div id="tabCost" class="flex-1 overflow-y-auto p-5">
-        <div class="grid grid-cols-3 gap-3 mb-5">
-          <div class="rounded-xl bg-blue-50 border border-blue-100 p-4 text-center">
-            <p class="text-xs font-bold uppercase text-blue-500 mb-1">Total Spent</p>
-            <p id="costTotal" class="text-2xl font-bold text-blue-700">$0.0000</p>
+        <div class="grid grid-cols-3 gap-3 mb-6">
+          <div class="stat-card" style="background:var(--primary-lt)">
+            <span class="stat-label" style="color:var(--primary)">Total Spent</span>
+            <span id="costTotal" class="stat-value" style="color:var(--primary)">$0.0000</span>
           </div>
-          <div class="rounded-xl bg-violet-50 border border-violet-100 p-4 text-center">
-            <p class="text-xs font-bold uppercase text-violet-500 mb-1">Total Calls</p>
-            <p id="costCalls" class="text-2xl font-bold text-violet-700">0</p>
+          <div class="stat-card" style="background:oklch(0.93 0.06 310)">
+            <span class="stat-label" style="color:oklch(0.38 0.22 310)">API Calls</span>
+            <span id="costCalls" class="stat-value" style="color:oklch(0.38 0.22 310)">0</span>
           </div>
-          <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-center">
-            <p class="text-xs font-bold uppercase text-emerald-500 mb-1">Total Tokens</p>
-            <p id="costTokens" class="text-2xl font-bold text-emerald-700">0</p>
+          <div class="stat-card" style="background:var(--ok-lt)">
+            <span class="stat-label" style="color:var(--ok)">Total Tokens</span>
+            <span id="costTokens" class="stat-value" style="color:var(--ok)">0</span>
           </div>
         </div>
-        <h3 class="text-xs font-bold uppercase text-slate-500 mb-3">Timeline</h3>
-        <div id="costTimeline" class="space-y-3 text-sm"></div>
+        <p class="label mb-3">Timeline</p>
+        <div id="costTimeline" class="space-y-1"></div>
       </div>
-      <!-- activity log tab -->
       <div id="tabLog" class="hidden flex-1 overflow-y-auto p-5">
-        <h3 class="text-xs font-bold uppercase text-slate-500 mb-3">Activity Log</h3>
-        <div id="auditLogList" class="space-y-2 text-sm"></div>
+        <p class="label mb-3">Activity Log</p>
+        <div id="auditLogList" class="space-y-2"></div>
       </div>
     </div>
   </div>
 
-  <!-- ── EDIT COMPANY MODAL ──────────────────────────────────── -->
-  <div id="editCompanyModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between p-5 border-b border-slate-200">
-        <h2 class="text-lg font-bold">Edit Company</h2>
-        <button id="editCompanyCancelBtn" class="px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold hover:bg-slate-50">✕</button>
+  <!-- ══ EDIT COMPANY MODAL ════════════════════════════════════ -->
+  <div id="editCompanyModal" class="hidden modal-overlay">
+    <div class="modal-box flex flex-col" style="max-width:520px;max-height:90vh">
+      <div class="modal-header shrink-0">
+        <h2 class="font-display font-bold text-lg">Edit Company</h2>
+        <button id="editCompanyCancelBtn" class="btn btn-ghost btn-sm" style="padding:6px 10px">✕</button>
       </div>
-      <div class="p-5 space-y-3">
+      <div class="modal-body flex-1 overflow-y-auto space-y-4">
         <input type="hidden" id="editCompanyId" />
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Company Name</span>
-          <input id="editCompanyName" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
-        </label>
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Category</span>
-          <select id="editCompanyCategory" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white"></select>
-        </label>
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Site / Development</span>
-          <select id="editCompanySite" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white"></select>
-        </label>
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Address</span>
-          <input id="editCompanyAddress" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
+        <label>
+          <span class="label">Company Name</span>
+          <input id="editCompanyName" class="inp" />
         </label>
         <div class="grid grid-cols-2 gap-3">
-          <label class="block">
-            <span class="text-xs font-bold uppercase text-slate-500">Phone</span>
-            <input id="editCompanyPhone" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
+          <label>
+            <span class="label">Category</span>
+            <select id="editCompanyCategory" class="inp"></select>
           </label>
-          <label class="block">
-            <span class="text-xs font-bold uppercase text-slate-500">Email</span>
-            <input id="editCompanyEmail" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
+          <div>
+            <span class="label">Site(s)</span>
+            <div class="multisite-wrap" id="editSiteWrap">
+              <div class="multisite-trigger" id="editSiteTrigger" tabindex="0">
+                <span class="multisite-placeholder" id="editSitePlaceholder">Select site(s)…</span>
+              </div>
+              <div class="multisite-dropdown hidden" id="editSiteDropdown"></div>
+            </div>
+          </div>
+        </div>
+        <label>
+          <span class="label">Address</span>
+          <input id="editCompanyAddress" class="inp" />
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label>
+            <span class="label">Phone</span>
+            <input id="editCompanyPhone" class="inp" />
+          </label>
+          <label>
+            <span class="label">Email</span>
+            <input id="editCompanyEmail" class="inp" />
           </label>
         </div>
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Website</span>
-          <input id="editCompanyWebsite" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
+        <label>
+          <span class="label">Website</span>
+          <input id="editCompanyWebsite" class="inp" />
         </label>
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Description</span>
-          <textarea id="editCompanyDesc" rows="2" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white resize-none"></textarea>
+        <label>
+          <span class="label">Description</span>
+          <textarea id="editCompanyDesc" rows="2" class="inp"></textarea>
         </label>
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Comments</span>
-          <textarea id="editCompanyComments" rows="2" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white resize-none"></textarea>
+        <label>
+          <span class="label">Comments</span>
+          <textarea id="editCompanyComments" rows="2" class="inp"></textarea>
         </label>
-        <div class="flex gap-2 pt-2">
-          <button id="editCompanySaveBtn" class="flex-1 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">Save Changes</button>
-          <button id="editCompanyCancelBtn2" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50">Cancel</button>
-        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="editCompanySaveBtn" class="btn btn-primary flex-1">Save Changes</button>
+        <button id="editCompanyCancelBtn2" class="btn btn-ghost">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- ── EDIT PIC MODAL ──────────────────────────────────────── -->
-  <div id="editPicModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-      <div class="flex items-center justify-between p-5 border-b border-slate-200">
-        <h2 class="text-lg font-bold">Edit Contact</h2>
-        <button id="editPicCancelBtn" class="px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold hover:bg-slate-50">✕</button>
+  <!-- ══ EDIT PIC MODAL ════════════════════════════════════════ -->
+  <div id="editPicModal" class="hidden modal-overlay">
+    <div class="modal-box" style="max-width:440px">
+      <div class="modal-header">
+        <h2 class="font-display font-bold text-lg">Edit Contact</h2>
+        <button id="editPicCancelBtn" class="btn btn-ghost btn-sm" style="padding:6px 10px">✕</button>
       </div>
-      <div class="p-5 space-y-3">
+      <div class="modal-body space-y-4">
         <input type="hidden" id="editPicId" />
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Name</span>
-          <input id="editPicName" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
-        </label>
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Position</span>
-          <input id="editPicPosition" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
-        </label>
+        <label><span class="label">Name</span><input id="editPicName" class="inp" /></label>
+        <label><span class="label">Position</span><input id="editPicPosition" class="inp" /></label>
         <div class="grid grid-cols-2 gap-3">
-          <label class="block">
-            <span class="text-xs font-bold uppercase text-slate-500">Phone</span>
-            <input id="editPicPhone" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
-          </label>
-          <label class="block">
-            <span class="text-xs font-bold uppercase text-slate-500">Email</span>
-            <input id="editPicEmail" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" />
-          </label>
+          <label><span class="label">Phone</span><input id="editPicPhone" class="inp" /></label>
+          <label><span class="label">Email</span><input id="editPicEmail" class="inp" /></label>
         </div>
-        <div class="flex gap-2 pt-2">
-          <button id="editPicSaveBtn" class="flex-1 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">Save Changes</button>
-          <button id="editPicCancelBtn2" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50">Cancel</button>
-        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="editPicSaveBtn" class="btn btn-primary flex-1">Save Changes</button>
+        <button id="editPicCancelBtn2" class="btn btn-ghost">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- ── ADD PIC MODAL ─────────────────────────────────────────── -->
-  <div id="addPicModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-      <div class="flex items-center justify-between p-5 border-b border-slate-200">
+  <!-- ══ ADD PIC MODAL ═════════════════════════════════════════ -->
+  <div id="addPicModal" class="hidden modal-overlay">
+    <div class="modal-box" style="max-width:440px">
+      <div class="modal-header">
         <div>
-          <h2 class="text-lg font-bold">Add Contact</h2>
-          <p id="addPicCompanyName" class="text-xs text-slate-500 mt-0.5"></p>
+          <h2 class="font-display font-bold text-lg">Add Contact</h2>
+          <p id="addPicCompanyName" class="text-xs mt-0.5" style="color:var(--text-3)"></p>
         </div>
-        <button id="addPicCancelBtn" class="px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold hover:bg-slate-50">✕</button>
+        <button id="addPicCancelBtn" class="btn btn-ghost btn-sm" style="padding:6px 10px">✕</button>
       </div>
-      <div class="p-5 space-y-3">
+      <div class="modal-body space-y-4">
         <input type="hidden" id="addPicCompanyId" />
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Name</span>
-          <input id="addPicName" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" placeholder="Full name" />
-        </label>
-        <label class="block">
-          <span class="text-xs font-bold uppercase text-slate-500">Position</span>
-          <input id="addPicPosition" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" placeholder="Job title" />
-        </label>
+        <label><span class="label">Name</span><input id="addPicName" class="inp" placeholder="Full name" /></label>
+        <label><span class="label">Position</span><input id="addPicPosition" class="inp" placeholder="Job title" /></label>
         <div class="grid grid-cols-2 gap-3">
-          <label class="block">
-            <span class="text-xs font-bold uppercase text-slate-500">Phone</span>
-            <input id="addPicPhone" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" placeholder="e.g. 012-345 6789" />
-          </label>
-          <label class="block">
-            <span class="text-xs font-bold uppercase text-slate-500">Email</span>
-            <input id="addPicEmail" class="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white" placeholder="email@example.com" />
-          </label>
+          <label><span class="label">Phone</span><input id="addPicPhone" class="inp" placeholder="012-345 6789" /></label>
+          <label><span class="label">Email</span><input id="addPicEmail" class="inp" placeholder="email@example.com" /></label>
         </div>
-        <p id="addPicError" class="hidden text-red-600 text-xs">Please enter at least a name.</p>
-        <div class="flex gap-2 pt-2">
-          <button id="addPicSaveBtn" class="flex-1 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700">+ Add Contact</button>
-          <button id="addPicCancelBtn2" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50">Cancel</button>
-        </div>
+        <p id="addPicError" class="hidden text-xs font-medium" style="color:var(--danger)">Please enter at least a name.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="addPicSaveBtn" class="btn btn-ok flex-1">+ Add Contact</button>
+        <button id="addPicCancelBtn2" class="btn btn-ghost">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- ── CELEBRATION POPUP ───────────────────────────────────── -->
-  <div id="celebrationOverlay" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-    <div id="celebrationBox" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center celebrate-pop">
-      <div class="text-6xl mb-3" id="celebEmoji">🎉</div>
-      <h2 class="text-2xl font-bold text-slate-900 mb-1">Amazing!</h2>
-      <p id="celebMessage" class="text-slate-600 text-sm mb-5">New service providers have been added successfully!</p>
-      <button id="celebCloseBtn" class="px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 text-sm">Awesome, thanks!</button>
+  <!-- ══ CELEBRATION ════════════════════════════════════════════ -->
+  <div id="celebrationOverlay" class="hidden modal-overlay">
+    <div id="celebrationBox" class="modal-box text-center" style="max-width:360px;padding:40px 32px">
+      <div id="celebEmoji" style="font-size:64px;line-height:1;margin-bottom:16px">🎉</div>
+      <h2 class="font-display font-bold text-2xl mb-2" style="color:var(--text)">Amazing Work!</h2>
+      <p id="celebMessage" class="text-sm leading-relaxed mb-6" style="color:var(--text-2)">New service providers have been added!</p>
+      <button id="celebCloseBtn" class="btn btn-primary" style="width:100%">Awesome, thanks! 🙌</button>
     </div>
   </div>
 
-  <!-- ── SCRIPT ──────────────────────────────────────────────── -->
+  <!-- ══ SCRIPT ═════════════════════════════════════════════════ -->
   <script>
-    const SUPABASE_URL = 'https://ntxluljbenlmcmabmwps.supabase.co';
+    const SUPABASE_URL     = 'https://ntxluljbenlmcmabmwps.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_J7Ty8j2ejEVhZ0oN4P5uvQ_GJja5C-Y';
-    const OPENAI_API_KEY = ['sk-proj-Rr2UVgBcD8o8llzdl-65PfKfXgxZdU_sRnXPm452gNzY1G9eI',
+    const OPENAI_API_KEY   = ['sk-proj-Rr2UVgBcD8o8llzdl-65PfKfXgxZdU_sRnXPm452gNzY1G9eI',
       'MghuxPzVzyaSz_vuRcJtYHWaLT3BlbkFJ6aNbJB5ECMEBaY-Kv3nhk-Cw5dBuGKmISptYKg245Fd81j1rIZTqieZvq8Ak4Ioxe8nnxcr98A'].join('');
-    const OPENAI_MODEL = 'gpt-4o-mini';
-    const ADMIN_USER = 'JF Chong';
-    const ADMIN_PASS = 'Jfchong12345';
+    const OPENAI_MODEL  = 'gpt-4o-mini';
+    const ADMIN_USER    = 'JF Chong';
+    const ADMIN_PASS    = 'Jfchong12345';
 
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -317,35 +647,118 @@
     const defaultCategories = ['Security Services','Cleaning Services','Risk Management','Maintenance','Utilities','Insurance','Engineering Services','Other'];
 
     const state = {
-      companies: [],
-      picsByCompany: {},
-      sites: [],
-      categories: [...defaultCategories],
-      auditLog: [],
-      search: '',
-      category: 'All',
-      adminLoggedIn: false
+      companies: [], picsByCompany: {}, sites: [],
+      categories: [...defaultCategories], auditLog: [],
+      search: '', category: 'All', adminLoggedIn: false
     };
+
+    // Pending PICs in the manual add modal
+    let manualPendingPics = [];
 
     // ── HELPERS ──────────────────────────────────────────────────
-    const escapeHtml = (v) => String(v || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const escapeHtml = (v) => String(v||'').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const escapeAttr = escapeHtml;
-    const $ = (id) => document.getElementById(id);
+    const $  = (id) => document.getElementById(id);
+    const q  = (sel, ctx = document) => ctx.querySelector(sel);
 
-    const showBanner = (message, type = 'info') => {
-      const b = $('banner');
-      b.className = 'mb-4 rounded-lg border px-4 py-3 text-sm';
-      if (type === 'error') b.classList.add('bg-red-50','border-red-200','text-red-800');
-      else if (type === 'success') b.classList.add('bg-green-50','border-green-200','text-green-800');
-      else b.classList.add('bg-blue-50','border-blue-200','text-blue-800');
-      b.textContent = message;
-      b.classList.remove('hidden');
-      setTimeout(() => b.classList.add('hidden'), 5000);
+    // site stored as comma-separated string; convert to/from array
+    const sitesToStr   = (arr) => arr.join(', ');
+    const strToSites   = (s)   => (s || '').split(',').map((x) => x.trim()).filter(Boolean);
+
+    const catClass = (cat) => {
+      const m = { 'Security Services':'cat-security','Cleaning Services':'cat-cleaning','Risk Management':'cat-risk','Maintenance':'cat-maintenance','Utilities':'cat-utilities','Insurance':'cat-insurance','Engineering Services':'cat-engineering' };
+      return m[cat] || 'cat-other';
     };
-    const hideBanner = () => $('banner').classList.add('hidden');
-    const setStatus = (text) => { $('syncStatus').textContent = text; };
-    const closeModal = (id) => $(id).classList.add('hidden');
-    const openModal = (id) => $(id).classList.remove('hidden');
+    const catBadge = (cat) => {
+      const m = { 'Security Services':'cbadge-security','Cleaning Services':'cbadge-cleaning','Risk Management':'cbadge-risk','Maintenance':'cbadge-maintenance','Utilities':'cbadge-utilities','Insurance':'cbadge-insurance','Engineering Services':'cbadge-engineering' };
+      return m[cat] || 'cbadge-other';
+    };
+
+    const showBanner = (msg, type = 'info') => {
+      const b = $('banner');
+      b.className = 'banner ' + (type === 'error' ? 'banner-error' : type === 'success' ? 'banner-success' : 'banner-info');
+      b.textContent = msg; b.classList.remove('hidden');
+      setTimeout(() => b.classList.add('hidden'), 5500);
+    };
+    const hideBanner  = () => $('banner').classList.add('hidden');
+    const setStatus   = (t) => { $('syncStatus').textContent = t; };
+    const closeModal  = (id) => $(id).classList.add('hidden');
+    const openModal   = (id) => $(id).classList.remove('hidden');
+
+    // ── MULTI-SITE SELECT COMPONENT ──────────────────────────────
+    // Each instance: { triggerId, dropdownId, placeholderId, selected: Set }
+    const multiSiteInstances = {};
+
+    const buildMultisite = (key, triggerId, dropdownId, placeholderId) => {
+      const inst = { triggerId, dropdownId, placeholderId, selected: new Set() };
+      multiSiteInstances[key] = inst;
+
+      const trigger  = $(triggerId);
+      const dropdown = $(dropdownId);
+
+      const refresh = () => {
+        // Remove tags, keep placeholder
+        [...trigger.querySelectorAll('.multisite-tag')].forEach((t) => t.remove());
+        const ph = $(placeholderId);
+        if (inst.selected.size === 0) {
+          ph.style.display = '';
+        } else {
+          ph.style.display = 'none';
+          inst.selected.forEach((site) => {
+            const tag = document.createElement('span');
+            tag.className = 'multisite-tag';
+            tag.innerHTML = `${escapeHtml(site)}<button type="button" title="Remove">×</button>`;
+            tag.querySelector('button').addEventListener('click', (e) => {
+              e.stopPropagation();
+              inst.selected.delete(site);
+              const cb = dropdown.querySelector(`input[value="${CSS.escape(site)}"]`);
+              if (cb) cb.checked = false;
+              refresh();
+            });
+            trigger.insertBefore(tag, ph);
+          });
+        }
+      };
+
+      const rebuildDropdown = () => {
+        dropdown.innerHTML = '';
+        state.sites.forEach((site) => {
+          const opt = document.createElement('label');
+          opt.className = 'multisite-option';
+          opt.innerHTML = `<input type="checkbox" value="${escapeAttr(site)}" ${inst.selected.has(site) ? 'checked' : ''} /> ${escapeHtml(site)}`;
+          opt.querySelector('input').addEventListener('change', (e) => {
+            if (e.target.checked) inst.selected.add(site);
+            else inst.selected.delete(site);
+            refresh();
+          });
+          dropdown.appendChild(opt);
+        });
+      };
+
+      trigger.addEventListener('click', (e) => {
+        const isOpen = !dropdown.classList.contains('hidden');
+        // Close all others
+        Object.values(multiSiteInstances).forEach((i) => $(i.dropdownId).classList.add('hidden'), $(i.triggerId).classList.remove('open'));
+        if (!isOpen) {
+          rebuildDropdown();
+          dropdown.classList.remove('hidden');
+          trigger.classList.add('open');
+        }
+      });
+
+      // Close on outside click
+      document.addEventListener('click', (e) => {
+        if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.classList.add('hidden');
+          trigger.classList.remove('open');
+        }
+      }, true);
+
+      inst.refresh = refresh;
+      inst.rebuildDropdown = rebuildDropdown;
+      inst.setSelected = (arr) => { inst.selected = new Set(arr); refresh(); };
+      inst.getSelected = () => [...inst.selected];
+    };
 
     // ── SUPABASE ─────────────────────────────────────────────────
     const sb = async (path, options = {}) => {
@@ -360,7 +773,7 @@
         }
       });
       const raw = await res.text();
-      if (!res.ok) throw new Error(`Supabase ${res.status}: ${raw.substring(0, 220)}`);
+      if (!res.ok) throw new Error(`Supabase ${res.status}: ${raw.substring(0,220)}`);
       return raw ? JSON.parse(raw) : null;
     };
 
@@ -370,12 +783,13 @@
       address: c.address || '', generalPhone: c.general_phone || '',
       generalEmail: c.general_email || '', website: c.website || '',
       description: c.description || '', site: c.site || '',
+      sites: strToSites(c.site || ''),
       uploadedBy: c.uploaded_by || '', sourceFile: c.source_file || '',
       comments: c.comments || '', deleted: !!c.deleted, dateAdded: c.created_at
     });
 
     const loadAllData = async () => {
-      hideBanner(); setStatus('Syncing...');
+      hideBanner(); setStatus('Syncing…');
       try {
         const [companies, pics, sites, categories, audit] = await Promise.all([
           sb('companies?select=*&order=created_at.desc'),
@@ -384,18 +798,18 @@
           sb('categories?select=name&order=sort_order.asc,name.asc'),
           sb('audit_log?select=*&order=created_at.desc&limit=200')
         ]);
-        state.companies = (companies || []).map(normalizeCompany);
+        state.companies    = (companies || []).map(normalizeCompany);
         state.picsByCompany = {};
         (pics || []).forEach((p) => {
           if (!state.picsByCompany[p.company_id]) state.picsByCompany[p.company_id] = [];
           state.picsByCompany[p.company_id].push({
-            id: p.id, name: p.name || '', position: p.position || '',
-            phone: p.phone || '', email: p.email || '', deleted: !!p.deleted
+            id: p.id, name: p.name||'', position: p.position||'',
+            phone: p.phone||'', email: p.email||'', deleted: !!p.deleted
           });
         });
-        state.sites = (sites || []).map((s) => s.name);
+        state.sites      = (sites || []).map((s) => s.name);
         state.categories = (categories && categories.length ? categories.map((c) => c.name) : defaultCategories);
-        state.auditLog = audit || [];
+        state.auditLog   = audit || [];
         renderControls(); renderCompanies();
         setStatus(`Synced ${new Date().toLocaleTimeString()}`);
       } catch (err) {
@@ -406,17 +820,12 @@
     };
 
     const addAuditEntry = async (action, details, user) => {
-      try { await sb('audit_log', { method: 'POST', body: JSON.stringify({ user_name: user || 'Unknown', action, details }) }); }
+      try { await sb('audit_log', { method: 'POST', body: JSON.stringify({ user_name: user||'Unknown', action, details }) }); }
       catch (e) { console.warn('Audit failed', e); }
     };
 
     // ── RENDER ───────────────────────────────────────────────────
     const renderControls = () => {
-      const selSite = $('siteSelect').value;
-      $('siteSelect').innerHTML = '<option value="">Select a site...</option>' +
-        state.sites.map((s) => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join('');
-      if (selSite && state.sites.includes(selSite)) $('siteSelect').value = selSite;
-
       const selCat = $('categoryFilter').value || 'All';
       $('categoryFilter').innerHTML = '<option value="All">All Categories</option>' +
         state.categories.map((c) => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
@@ -430,21 +839,95 @@
         if (state.category !== 'All' && c.category !== state.category) return false;
         if (!term) return true;
         const pics = state.picsByCompany[c.id] || [];
-        return [c.name, c.address, c.description, c.site, c.uploadedBy].some((v) => (v || '').toLowerCase().includes(term)) ||
-          pics.some((p) => [p.name, p.position, p.phone, p.email].some((v) => (v || '').toLowerCase().includes(term)));
+        return [c.name, c.address, c.description, c.site, c.uploadedBy].some((v) => (v||'').toLowerCase().includes(term)) ||
+          pics.some((p) => [p.name, p.position, p.phone, p.email].some((v) => (v||'').toLowerCase().includes(term)));
       });
+    };
+
+    const renderPic = (pic) => `
+      <div class="pic-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div style="min-width:0;flex:1">
+            <div style="font-weight:600;font-size:14px;color:var(--text)">${escapeHtml(pic.name||'Unnamed Contact')}</div>
+            ${pic.position ? `<div style="font-size:12px;color:var(--text-3);margin-top:2px">${escapeHtml(pic.position)}</div>` : ''}
+            ${pic.phone   ? `<div style="font-size:13px;color:var(--text-2);margin-top:5px">📞 ${escapeHtml(pic.phone)}</div>` : ''}
+            ${pic.email   ? `<div style="font-size:13px;color:var(--text-2);word-break:break-all">✉️ ${escapeHtml(pic.email)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">
+            <button data-edit-pic="${escapeAttr(pic.id)}" class="btn btn-ghost btn-xs">Edit</button>
+            <button data-delete-pic="${escapeAttr(pic.id)}" class="btn btn-danger-ghost btn-xs">Delete ×</button>
+          </div>
+        </div>
+      </div>`;
+
+    const renderCompanyCard = (company) => {
+      const pics      = (state.picsByCompany[company.id] || []).filter((p) => !p.deleted);
+      const detailsId = `details-${company.id}`;
+      const siteTags  = company.sites.length
+        ? company.sites.map((s) => `<span class="badge badge-muted">${escapeHtml(s)}</span>`).join('')
+        : '<span class="badge badge-muted">No site</span>';
+      return `
+        <article class="company-card ${catClass(company.category)}">
+          <button data-toggle="${detailsId}" class="company-toggle">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+              <div style="min-width:0;flex:1">
+                <h2 style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--text);line-height:1.25">${escapeHtml(company.name||'Unnamed company')}</h2>
+                <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">
+                  <span class="badge ${catBadge(company.category)}">${escapeHtml(company.category||'Other')}</span>
+                  ${siteTags}
+                  <span class="badge badge-ok">${pics.length} Contact${pics.length===1?'':'s'}</span>
+                </div>
+                ${company.description ? `<p style="margin-top:8px;font-size:13.5px;color:var(--text-2);line-height:1.5">${escapeHtml(company.description)}</p>` : ''}
+              </div>
+              <svg style="flex-shrink:0;margin-top:4px;color:var(--text-3)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </button>
+          <div id="${detailsId}" class="hidden company-details">
+            ${(company.address||company.generalPhone||company.generalEmail||company.website) ? `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px">
+              ${company.address      ? `<div class="detail-tile"><div class="label">Address</div><div>${escapeHtml(company.address)}</div></div>` : ''}
+              ${company.generalPhone ? `<div class="detail-tile"><div class="label">Phone</div><div>${escapeHtml(company.generalPhone)}</div></div>` : ''}
+              ${company.generalEmail ? `<div class="detail-tile"><div class="label">Email</div><div style="word-break:break-all">${escapeHtml(company.generalEmail)}</div></div>` : ''}
+              ${company.website      ? `<div class="detail-tile"><div class="label">Website</div><div style="word-break:break-all">${escapeHtml(company.website)}</div></div>` : ''}
+            </div>` : ''}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span class="label" style="margin-bottom:0">Persons in Charge</span>
+              <button data-add-pic="${escapeAttr(company.id)}" data-company-name="${escapeAttr(company.name)}" class="btn btn-ok btn-xs">+ Add Contact</button>
+            </div>
+            ${pics.length
+              ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">${pics.map(renderPic).join('')}</div>`
+              : `<p style="font-size:13px;color:var(--text-3);font-style:italic;margin-bottom:4px">No contacts yet — add one above.</p>`}
+            ${company.comments ? `
+            <div style="margin-top:16px;background:var(--warn-lt);border:1.5px solid oklch(0.62 0.16 58 / .25);border-radius:var(--r-sm);padding:12px 14px;font-size:13.5px;color:oklch(0.40 0.14 58)">
+              <span style="font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:4px">Comments</span>
+              ${escapeHtml(company.comments)}
+            </div>` : ''}
+            <div style="margin-top:16px;padding-top:14px;border-top:1.5px solid var(--border-subtle);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px">
+              <span style="font-size:11px;color:var(--text-3)">${escapeHtml(company.sourceFile||'')}${company.uploadedBy?' · '+escapeHtml(company.uploadedBy):''} · ${new Date(company.dateAdded).toLocaleString()}</span>
+              <div style="display:flex;gap:8px">
+                <button data-edit-company="${escapeAttr(company.id)}" class="btn btn-ghost btn-xs">Edit</button>
+                <button data-delete-company="${escapeAttr(company.id)}" class="btn btn-danger-ghost btn-xs">Delete ×</button>
+              </div>
+            </div>
+          </div>
+        </article>`;
     };
 
     const renderCompanies = () => {
       const companies = visibleCompanies();
       $('resultCount').textContent = companies.length;
       if (!companies.length) {
-        $('companyList').innerHTML = '<div class="glass border border-white rounded-xl p-10 text-center text-slate-500 shadow-sm">No companies yet. Upload a file to get started.</div>';
+        $('companyList').innerHTML = `
+          <div style="text-align:center;padding:64px 20px;color:var(--text-3)">
+            <div style="font-size:48px;margin-bottom:14px">🗂️</div>
+            <p style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--text-2);margin-bottom:6px">No companies found</p>
+            <p style="font-size:13px">Upload a file for AI extraction, or use <strong>Add Company Manually</strong>.</p>
+          </div>`;
         return;
       }
       $('companyList').innerHTML = companies.map(renderCompanyCard).join('');
       document.querySelectorAll('[data-toggle]').forEach((btn) =>
-        btn.addEventListener('click', () => document.getElementById(btn.dataset.toggle)?.classList.toggle('hidden')));
+        btn.addEventListener('click', () => $(btn.dataset.toggle)?.classList.toggle('hidden')));
       document.querySelectorAll('[data-delete-company]').forEach((btn) =>
         btn.addEventListener('click', () => deleteCompany(btn.dataset.deleteCompany)));
       document.querySelectorAll('[data-edit-company]').forEach((btn) =>
@@ -457,94 +940,112 @@
         btn.addEventListener('click', (e) => { e.stopPropagation(); openAddPic(btn.dataset.addPic, btn.dataset.companyName); }));
     };
 
-    const detail = (label, value) => value
-      ? `<div class="rounded-lg bg-white border border-slate-200 p-3"><div class="text-xs font-bold uppercase text-slate-500">${label}</div><div class="mt-1 break-words">${escapeHtml(value)}</div></div>`
-      : '';
+    // ── MANUAL ADD COMPANY ───────────────────────────────────────
+    const openAddCompanyManual = () => {
+      manualPendingPics = [];
+      $('manualCompanyName').value = '';
+      $('manualCompanyAddress').value = '';
+      $('manualCompanyPhone').value = '';
+      $('manualCompanyEmail').value = '';
+      $('manualCompanyWebsite').value = '';
+      $('manualCompanyDesc').value = '';
+      $('manualCompanyComments').value = '';
+      $('manualPicName').value = $('manualPicPosition').value = $('manualPicPhone').value = $('manualPicEmail').value = '';
+      $('manualCompanyError').classList.add('hidden');
+      $('manualCompanyCategory').innerHTML = state.categories.map((c) =>
+        `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
+      multiSiteInstances['manualSite'].setSelected([]);
+      renderManualPicList();
+      openModal('addCompanyModal');
+      setTimeout(() => $('manualCompanyName').focus(), 100);
+    };
 
-    const renderPic = (pic) => `
-      <div class="rounded-lg bg-white border border-slate-200 p-3">
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <div class="font-semibold">${escapeHtml(pic.name || 'Unnamed Contact')}</div>
-            ${pic.position ? `<div class="text-xs text-slate-500">${escapeHtml(pic.position)}</div>` : ''}
-            ${pic.phone ? `<div class="mt-1 text-sm">${escapeHtml(pic.phone)}</div>` : ''}
-            ${pic.email ? `<div class="text-sm break-all">${escapeHtml(pic.email)}</div>` : ''}
-          </div>
-          <div class="flex gap-1 shrink-0">
-            <button data-edit-pic="${escapeAttr(pic.id)}" class="px-2 py-1 rounded border border-blue-200 text-blue-700 text-xs hover:bg-blue-50">Edit</button>
-            <button data-delete-pic="${escapeAttr(pic.id)}" class="px-2 py-1 rounded border border-red-200 text-red-700 text-xs hover:bg-red-50">Delete ×</button>
-          </div>
-        </div>
-      </div>`;
+    const renderManualPicList = () => {
+      $('manualPicList').innerHTML = manualPendingPics.length
+        ? manualPendingPics.map((p, i) => `
+          <div class="inline-pic">
+            <div style="min-width:0">
+              <span style="font-weight:600;font-size:13px;color:var(--text)">${escapeHtml(p.name)}</span>
+              ${p.position ? `<span style="color:var(--text-3);font-size:12px"> · ${escapeHtml(p.position)}</span>` : ''}
+              ${p.phone    ? `<span style="color:var(--text-3);font-size:12px"> · ${escapeHtml(p.phone)}</span>` : ''}
+            </div>
+            <button class="btn btn-danger-ghost btn-xs" onclick="manualPendingPics.splice(${i},1);renderManualPicList()">×</button>
+          </div>`).join('')
+        : '<p style="font-size:12px;color:var(--text-3);font-style:italic">No contacts added yet.</p>';
+    };
 
-    const renderCompanyCard = (company) => {
-      const pics = (state.picsByCompany[company.id] || []).filter((p) => !p.deleted);
-      const detailsId = `details-${company.id}`;
-      return `
-        <article class="glass border border-white rounded-xl shadow-sm overflow-hidden">
-          <button data-toggle="${detailsId}" class="w-full text-left p-4 hover:bg-white/70">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <h2 class="font-bold text-slate-900">${escapeHtml(company.name || 'Unnamed company')}</h2>
-                <div class="mt-1 flex flex-wrap gap-2 text-xs">
-                  <span class="px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100">${escapeHtml(company.category || 'Other')}</span>
-                  <span class="px-2 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200">${escapeHtml(company.site || 'No site')}</span>
-                  <span class="px-2 py-1 rounded bg-purple-50 text-purple-700 border border-purple-100">${pics.length} Contact${pics.length === 1 ? '' : 's'}</span>
-                </div>
-                ${company.description ? `<p class="mt-2 text-sm text-slate-600">${escapeHtml(company.description)}</p>` : ''}
-              </div>
-              <span class="text-sm text-slate-400 shrink-0">▾</span>
-            </div>
-          </button>
-          <div id="${detailsId}" class="hidden border-t border-slate-200 p-4 bg-white/50">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              ${detail('Address', company.address)}
-              ${detail('Phone', company.generalPhone)}
-              ${detail('Email', company.generalEmail)}
-              ${detail('Website', company.website)}
-            </div>
-            <div class="mt-4 mb-2 flex items-center justify-between">
-              <h3 class="text-xs font-bold uppercase text-slate-500">Persons in Charge</h3>
-              <button data-add-pic="${escapeAttr(company.id)}" data-company-name="${escapeAttr(company.name)}" class="px-2 py-1 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">+ Add Contact</button>
-            </div>
-            ${pics.length ? `<div class="grid grid-cols-1 lg:grid-cols-2 gap-2">${pics.map(renderPic).join('')}</div>` : '<p class="text-xs text-slate-400 mb-2">No contacts yet.</p>'}
-            ${company.comments ? `<div class="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">${escapeHtml(company.comments)}</div>` : ''}
-            <div class="mt-4 pt-3 border-t border-slate-200 flex flex-wrap justify-between gap-2 text-xs text-slate-500">
-              <span>${escapeHtml(company.sourceFile || '')} | ${escapeHtml(company.uploadedBy || '')} | ${new Date(company.dateAdded).toLocaleString()}</span>
-              <div class="flex gap-2">
-                <button data-edit-company="${escapeAttr(company.id)}" class="px-2 py-1 rounded border border-blue-200 text-blue-700 hover:bg-blue-50">Edit</button>
-                <button data-delete-company="${escapeAttr(company.id)}" class="px-2 py-1 rounded border border-red-200 text-red-700 hover:bg-red-50">Delete ×</button>
-              </div>
-            </div>
-          </div>
-        </article>`;
+    const manualAddPicToList = () => {
+      const name = $('manualPicName').value.trim();
+      if (!name) { $('manualPicName').focus(); return; }
+      manualPendingPics.push({
+        name, position: $('manualPicPosition').value.trim(),
+        phone: $('manualPicPhone').value.trim(), email: $('manualPicEmail').value.trim()
+      });
+      $('manualPicName').value = $('manualPicPosition').value = $('manualPicPhone').value = $('manualPicEmail').value = '';
+      $('manualPicName').focus();
+      renderManualPicList();
+    };
+
+    const saveManualCompany = async () => {
+      const name = $('manualCompanyName').value.trim();
+      if (!name) { $('manualCompanyError').classList.remove('hidden'); $('manualCompanyName').focus(); return; }
+      $('manualCompanyError').classList.add('hidden');
+      const uploader = $('uploaderName').value.trim() || 'Manual Entry';
+      const selectedSites = multiSiteInstances['manualSite'].getSelected();
+      const siteStr = sitesToStr(selectedSites);
+      const payload = {
+        name, category: $('manualCompanyCategory').value,
+        site: siteStr, address: $('manualCompanyAddress').value.trim(),
+        general_phone: $('manualCompanyPhone').value.trim(),
+        general_email: $('manualCompanyEmail').value.trim(),
+        website: $('manualCompanyWebsite').value.trim(),
+        description: $('manualCompanyDesc').value.trim(),
+        comments: $('manualCompanyComments').value.trim(),
+        uploaded_by: uploader, source_file: 'Manual Entry'
+      };
+      try {
+        const saved = await sb('companies', { method: 'POST', body: JSON.stringify(payload) });
+        const row = saved && saved[0];
+        let addedPics = 0;
+        if (row && manualPendingPics.length) {
+          const pics = manualPendingPics.map((p) => ({ ...p, company_id: row.id }));
+          await sb('pics', { method: 'POST', body: JSON.stringify(pics) });
+          addedPics = pics.length;
+        }
+        await addAuditEntry('COMPANY_ADDED_MANUAL', `added ${name} (${addedPics} contacts)`, uploader);
+        closeModal('addCompanyModal');
+        await loadAllData();
+        showCelebration(uploader, 1, addedPics);
+      } catch (err) {
+        showBanner(`Save failed: ${err.message}`, 'error');
+      }
     };
 
     // ── EDIT COMPANY ─────────────────────────────────────────────
     const openEditCompany = (id) => {
       const company = state.companies.find((c) => c.id === id);
       if (!company) return;
-      $('editCompanyId').value = id;
-      $('editCompanyName').value = company.name;
-      $('editCompanyAddress').value = company.address;
-      $('editCompanyPhone').value = company.generalPhone;
-      $('editCompanyEmail').value = company.generalEmail;
-      $('editCompanyWebsite').value = company.website;
-      $('editCompanyDesc').value = company.description;
+      $('editCompanyId').value       = id;
+      $('editCompanyName').value     = company.name;
+      $('editCompanyAddress').value  = company.address;
+      $('editCompanyPhone').value    = company.generalPhone;
+      $('editCompanyEmail').value    = company.generalEmail;
+      $('editCompanyWebsite').value  = company.website;
+      $('editCompanyDesc').value     = company.description;
       $('editCompanyComments').value = company.comments;
       $('editCompanyCategory').innerHTML = state.categories.map((c) =>
-        `<option value="${escapeAttr(c)}" ${c === company.category ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
-      $('editCompanySite').innerHTML = state.sites.map((s) =>
-        `<option value="${escapeAttr(s)}" ${s === company.site ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('');
+        `<option value="${escapeAttr(c)}" ${c===company.category?'selected':''}>${escapeHtml(c)}</option>`).join('');
+      multiSiteInstances['editSite'].setSelected(company.sites);
       openModal('editCompanyModal');
     };
 
     const saveEditCompany = async () => {
       const id = $('editCompanyId').value;
+      const selectedSites = multiSiteInstances['editSite'].getSelected();
       const payload = {
         name: $('editCompanyName').value.trim(),
         category: $('editCompanyCategory').value,
-        site: $('editCompanySite').value,
+        site: sitesToStr(selectedSites),
         address: $('editCompanyAddress').value.trim(),
         general_phone: $('editCompanyPhone').value.trim(),
         general_email: $('editCompanyEmail').value.trim(),
@@ -567,21 +1068,19 @@
     const openEditPic = (picId) => {
       const pic = Object.values(state.picsByCompany).flat().find((p) => p.id === picId);
       if (!pic) return;
-      $('editPicId').value = picId;
-      $('editPicName').value = pic.name;
+      $('editPicId').value       = picId;
+      $('editPicName').value     = pic.name;
       $('editPicPosition').value = pic.position;
-      $('editPicPhone').value = pic.phone;
-      $('editPicEmail').value = pic.email;
+      $('editPicPhone').value    = pic.phone;
+      $('editPicEmail').value    = pic.email;
       openModal('editPicModal');
     };
 
     const saveEditPic = async () => {
       const id = $('editPicId').value;
       const payload = {
-        name: $('editPicName').value.trim(),
-        position: $('editPicPosition').value.trim(),
-        phone: $('editPicPhone').value.trim(),
-        email: $('editPicEmail').value.trim()
+        name: $('editPicName').value.trim(), position: $('editPicPosition').value.trim(),
+        phone: $('editPicPhone').value.trim(), email: $('editPicEmail').value.trim()
       };
       try {
         await sb(`pics?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -596,12 +1095,9 @@
 
     // ── ADD PIC ──────────────────────────────────────────────────
     const openAddPic = (companyId, companyName) => {
-      $('addPicCompanyId').value = companyId;
+      $('addPicCompanyId').value        = companyId;
       $('addPicCompanyName').textContent = companyName || '';
-      $('addPicName').value = '';
-      $('addPicPosition').value = '';
-      $('addPicPhone').value = '';
-      $('addPicEmail').value = '';
+      $('addPicName').value = $('addPicPosition').value = $('addPicPhone').value = $('addPicEmail').value = '';
       $('addPicError').classList.add('hidden');
       openModal('addPicModal');
       setTimeout(() => $('addPicName').focus(), 100);
@@ -612,8 +1108,7 @@
       const name = $('addPicName').value.trim();
       if (!name) { $('addPicError').classList.remove('hidden'); return; }
       const payload = {
-        company_id: companyId,
-        name,
+        company_id: companyId, name,
         position: $('addPicPosition').value.trim(),
         phone: $('addPicPhone').value.trim(),
         email: $('addPicEmail').value.trim()
@@ -632,136 +1127,109 @@
     // ── DELETE ───────────────────────────────────────────────────
     const deleteCompany = async (id) => {
       const company = state.companies.find((c) => c.id === id);
-      if (!company || !confirm(`Delete "${company.name || 'this company'}"? This cannot be undone.`)) return;
+      if (!company || !confirm(`Delete "${company.name||'this company'}"? This cannot be undone.`)) return;
       try {
         await sb(`companies?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ deleted: true }) });
         await addAuditEntry('COMPANY_DELETED', `deleted ${company.name}`, $('uploaderName').value.trim() || 'Unknown');
         await loadAllData();
-      } catch (err) {
-        showBanner(`Delete failed: ${err.message}`, 'error');
-      }
+      } catch (err) { showBanner(`Delete failed: ${err.message}`, 'error'); }
     };
 
     const deletePic = async (picId) => {
       const pic = Object.values(state.picsByCompany).flat().find((p) => p.id === picId);
-      if (!pic || !confirm(`Delete contact "${pic.name || 'this contact'}"?`)) return;
+      if (!pic || !confirm(`Delete contact "${pic.name||'this contact'}"?`)) return;
       try {
         await sb(`pics?id=eq.${picId}`, { method: 'PATCH', body: JSON.stringify({ deleted: true }) });
         await addAuditEntry('PIC_DELETED', `deleted contact ${pic.name}`, $('uploaderName').value.trim() || 'Unknown');
         await loadAllData();
-      } catch (err) {
-        showBanner(`Delete failed: ${err.message}`, 'error');
-      }
+      } catch (err) { showBanner(`Delete failed: ${err.message}`, 'error'); }
     };
 
     // ── SETTINGS / AUTH ──────────────────────────────────────────
     const openSettings = () => {
-      if (state.adminLoggedIn) {
-        renderAuditLog();
-        openModal('settingsPanel');
-      } else {
-        $('loginUser').value = '';
-        $('loginPass').value = '';
+      if (state.adminLoggedIn) { renderAuditLog(); openModal('settingsPanel'); }
+      else {
+        $('loginUser').value = ''; $('loginPass').value = '';
         $('loginError').classList.add('hidden');
         openModal('loginModal');
       }
     };
 
     const attemptLogin = () => {
-      const u = $('loginUser').value.trim();
-      const p = $('loginPass').value;
-      if (u === ADMIN_USER && p === ADMIN_PASS) {
+      if ($('loginUser').value.trim() === ADMIN_USER && $('loginPass').value === ADMIN_PASS) {
         state.adminLoggedIn = true;
-        closeModal('loginModal');
-        renderAuditLog();
-        openModal('settingsPanel');
-      } else {
-        $('loginError').classList.remove('hidden');
-      }
+        closeModal('loginModal'); renderAuditLog(); openModal('settingsPanel');
+      } else { $('loginError').classList.remove('hidden'); }
     };
 
     const renderAuditLog = () => {
-      // Activity log — exclude OPENAI_USAGE entries
-      const list = $('auditLogList');
       const entries = state.auditLog.filter((e) => e.action !== 'OPENAI_USAGE');
-      if (!entries.length) {
-        list.innerHTML = '<p class="text-slate-400 text-sm">No activity yet.</p>';
-      } else {
-        list.innerHTML = entries.map((entry) => `
-          <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-semibold text-slate-700 text-xs">${escapeHtml(entry.user_name || 'Unknown')}</span>
-              <span class="text-xs text-slate-400">${new Date(entry.created_at).toLocaleString()}</span>
+      $('auditLogList').innerHTML = entries.length
+        ? entries.map((e) => `
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:11px 14px">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px">
+              <span style="font-weight:700;font-size:13px;color:var(--text)">${escapeHtml(e.user_name||'Unknown')}</span>
+              <span style="font-size:11px;color:var(--text-3)">${new Date(e.created_at).toLocaleString()}</span>
             </div>
-            <div class="text-xs text-slate-600 mt-1"><span class="font-mono bg-slate-200 rounded px-1">${escapeHtml(entry.action)}</span> ${escapeHtml(entry.details || '')}</div>
-          </div>`).join('');
-      }
+            <div style="font-size:12px;color:var(--text-2)">
+              <span style="font-family:monospace;background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:4px;padding:1px 6px;font-size:11px">${escapeHtml(e.action)}</span>
+              &nbsp;${escapeHtml(e.details||'')}
+            </div>
+          </div>`).join('')
+        : '<p style="color:var(--text-3);font-size:13px;font-style:italic">No activity yet.</p>';
 
-      // Cost timeline
-      const usageEntries = state.auditLog.filter((e) => e.action === 'OPENAI_USAGE');
-      let totalCost = 0, totalTokens = 0, totalCalls = usageEntries.length;
-      const timelineItems = usageEntries.map((entry) => {
+      const usages = state.auditLog.filter((e) => e.action === 'OPENAI_USAGE');
+      let totalCost = 0, totalTokens = 0;
+      const tlHtml = usages.map((entry) => {
         let u = {};
-        try { u = JSON.parse(entry.details || '{}'); } catch (e) {}
-        const cost = u.cost_usd || 0;
-        const tokens = u.total_tokens || 0;
-        totalCost += cost;
-        totalTokens += tokens;
-        const pct = Math.min(100, (cost / 0.50) * 100); // scale bar: 100% = $0.50
+        try { u = JSON.parse(entry.details||'{}'); } catch {}
+        const cost = u.cost_usd||0; totalCost += cost; totalTokens += u.total_tokens||0;
+        const pct  = Math.min(100, (cost/0.50)*100);
         return `
-          <div class="relative pl-5 pb-4 border-l-2 border-blue-100 last:border-transparent">
-            <div class="absolute -left-[7px] top-0 w-3 h-3 rounded-full bg-blue-400 border-2 border-white"></div>
-            <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-              <div class="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <p class="font-semibold text-slate-800 text-xs truncate max-w-xs">${escapeHtml(u.file || 'Unknown file')}</p>
-                  <p class="text-xs text-slate-400">${new Date(entry.created_at).toLocaleString()} · ${escapeHtml(entry.user_name || '?')}</p>
-                </div>
-                <span class="text-sm font-bold text-blue-700 shrink-0">$${cost.toFixed(6)}</span>
+          <div class="tl-item"><div class="tl-dot"></div>
+          <div class="tl-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
+              <div>
+                <p style="font-weight:700;font-size:13px;color:var(--text)">${escapeHtml(u.file||'Unknown file')}</p>
+                <p style="font-size:11px;color:var(--text-3);margin-top:2px">${new Date(entry.created_at).toLocaleString()} · ${escapeHtml(entry.user_name||'?')}</p>
               </div>
-              <div class="grid grid-cols-3 gap-2 text-xs text-slate-600 mb-2">
-                <div class="rounded bg-slate-50 border border-slate-200 p-1.5 text-center">
-                  <div class="font-bold text-slate-800">${(u.input_tokens || 0).toLocaleString()}</div>
-                  <div class="text-slate-400">input tkns</div>
-                </div>
-                <div class="rounded bg-slate-50 border border-slate-200 p-1.5 text-center">
-                  <div class="font-bold text-slate-800">${(u.output_tokens || 0).toLocaleString()}</div>
-                  <div class="text-slate-400">output tkns</div>
-                </div>
-                <div class="rounded bg-slate-50 border border-slate-200 p-1.5 text-center">
-                  <div class="font-bold text-slate-800">${(u.total_tokens || 0).toLocaleString()}</div>
-                  <div class="text-slate-400">total tkns</div>
-                </div>
-              </div>
-              <div class="w-full bg-slate-100 rounded-full h-1.5">
-                <div class="bg-blue-400 h-1.5 rounded-full" style="width:${pct.toFixed(1)}%"></div>
-              </div>
-              <p class="text-xs text-slate-400 mt-1">${escapeHtml(u.model || 'gpt-4o-mini')} · bar scales to $0.50</p>
+              <span style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--primary);flex-shrink:0">$${cost.toFixed(6)}</span>
             </div>
-          </div>`;
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+              ${[['Input',u.input_tokens||0],['Output',u.output_tokens||0],['Total',u.total_tokens||0]].map(([lbl,val]) => `
+              <div style="background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:6px;padding:8px;text-align:center">
+                <div style="font-weight:700;font-size:14px;color:var(--text)">${val.toLocaleString()}</div>
+                <div style="font-size:10px;color:var(--text-3)">${lbl}</div>
+              </div>`).join('')}
+            </div>
+            <div style="background:var(--border-subtle);border-radius:999px;height:5px;overflow:hidden">
+              <div style="background:var(--primary);height:5px;border-radius:999px;width:${pct.toFixed(1)}%"></div>
+            </div>
+            <p style="font-size:11px;color:var(--text-3);margin-top:4px">${escapeHtml(u.model||'gpt-4o-mini')} · bar = $0.50 max</p>
+          </div></div>`;
       }).join('');
 
       $('costTotal').textContent  = '$' + totalCost.toFixed(6);
-      $('costCalls').textContent  = totalCalls.toLocaleString();
+      $('costCalls').textContent  = usages.length.toLocaleString();
       $('costTokens').textContent = totalTokens.toLocaleString();
-      $('costTimeline').innerHTML = timelineItems || '<p class="text-slate-400 text-sm">No API calls recorded yet. Upload a file to start tracking.</p>';
+      $('costTimeline').innerHTML = tlHtml ||
+        '<p style="color:var(--text-3);font-size:13px;font-style:italic">No API calls yet. Upload a file to start tracking.</p>';
     };
 
     const switchTab = (active) => {
-      const isCost = active === 'cost';
-      $('tabCost').classList.toggle('hidden', !isCost);
-      $('tabLog').classList.toggle('hidden', isCost);
-      $('tabCostBtn').className = `px-5 py-3 text-sm font-semibold border-b-2 ${isCost ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`;
-      $('tabLogBtn').className  = `px-5 py-3 text-sm font-semibold border-b-2 ${!isCost ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`;
+      const c = active === 'cost';
+      $('tabCost').classList.toggle('hidden', !c);
+      $('tabLog').classList.toggle('hidden', c);
+      $('tabCostBtn').className = 'settings-tab' + (c  ? ' active' : '');
+      $('tabLogBtn').className  = 'settings-tab' + (!c ? ' active' : '');
     };
 
     // ── CELEBRATION ──────────────────────────────────────────────
-    const celebrationEmojis = ['🎉','🎊','🥳','✨','🌟','🎈','🏆','🙌'];
-    const confettiColors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4'];
+    const celebEmojis = ['🎉','🎊','🥳','✨','🌟','🎈','🏆','🙌'];
+    const confettiColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316'];
 
     const showCelebration = (bmName, companiesAdded, picsAdded) => {
-      const emoji = celebrationEmojis[Math.floor(Math.random() * celebrationEmojis.length)];
-      $('celebEmoji').textContent = emoji;
+      $('celebEmoji').textContent = celebEmojis[Math.floor(Math.random()*celebEmojis.length)];
       $('celebMessage').textContent = `Great Job ${bmName}! You have added ${companiesAdded} Company(ies) & ${picsAdded} PIC(s).`;
       const box = $('celebrationBox');
       box.classList.remove('celebrate-pop');
@@ -772,21 +1240,20 @@
     };
 
     const spawnConfetti = () => {
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 70; i++) {
         setTimeout(() => {
           const el = document.createElement('div');
           el.className = 'confetti-piece';
-          el.style.left = Math.random() * 100 + 'vw';
-          el.style.top = '-20px';
-          el.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
-          el.style.width = (8 + Math.random() * 8) + 'px';
-          el.style.height = (8 + Math.random() * 8) + 'px';
-          el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
-          el.style.animationDuration = (1.5 + Math.random() * 2) + 's';
-          el.style.animationDelay = '0s';
+          el.style.left = Math.random()*100 + 'vw';
+          el.style.top  = '-20px';
+          el.style.background = confettiColors[Math.floor(Math.random()*confettiColors.length)];
+          el.style.width  = (8 + Math.random()*8) + 'px';
+          el.style.height = (8 + Math.random()*8) + 'px';
+          el.style.borderRadius = Math.random()>.5 ? '50%' : '2px';
+          el.style.animationDuration = (1.5 + Math.random()*2.5) + 's';
           document.body.appendChild(el);
-          setTimeout(() => el.remove(), 4000);
-        }, i * 30);
+          setTimeout(() => el.remove(), 4500);
+        }, i*28);
       }
     };
 
@@ -798,176 +1265,155 @@
       try {
         await sb('sites', { method: 'POST', body: JSON.stringify({ name: trimmed }) });
         state.sites = [...new Set([...state.sites, trimmed])].sort();
-        renderControls();
-        $('siteSelect').value = trimmed;
-      } catch (err) {
-        showBanner(`Could not add site: ${err.message}`, 'error');
-      }
+        // Rebuild all multi-site dropdown caches
+        Object.values(multiSiteInstances).forEach((inst) => inst.rebuildDropdown());
+        showBanner(`Site "${trimmed}" added.`, 'success');
+      } catch (err) { showBanner(`Could not add site: ${err.message}`, 'error'); }
     };
 
     // ── FILE PROCESSING ──────────────────────────────────────────
-    const fileToBase64 = (file) => new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
+    const fileToBase64 = (file) => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res(r.result.split(',')[1]);
+      r.onerror = () => rej(new Error('Failed to read file'));
+      r.readAsDataURL(file);
     });
 
-    const compressImage = async (file, maxSize = 1024 * 1024) => {
+    const compressImage = async (file, maxSize = 1024*1024) => {
       if (file.size <= maxSize) return file;
-      return new Promise((resolve, reject) => {
+      return new Promise((res, rej) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
         img.onload = () => {
           URL.revokeObjectURL(url);
-          let width = img.width, height = img.height, quality = 0.85;
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+          let w = img.width, h = img.height, q = 0.85;
+          const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
           const attempt = () => {
-            canvas.width = width; canvas.height = height;
-            ctx.drawImage(img, 0, 0, width, height);
+            canvas.width = w; canvas.height = h;
+            ctx.drawImage(img, 0, 0, w, h);
             canvas.toBlob((blob) => {
-              if (!blob) return reject(new Error('Compression failed'));
-              if (blob.size <= maxSize || width < 500) return resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
-              if (quality > 0.55) quality -= 0.1;
-              else { width = Math.round(width * 0.85); height = Math.round(height * 0.85); quality = 0.8; }
+              if (!blob) return rej(new Error('Compression failed'));
+              if (blob.size <= maxSize || w < 500) return res(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+              if (q > 0.55) q -= 0.1;
+              else { w = Math.round(w*.85); h = Math.round(h*.85); q = 0.8; }
               attempt();
-            }, 'image/jpeg', quality);
+            }, 'image/jpeg', q);
           };
           attempt();
         };
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Image load failed')); };
         img.src = url;
       });
     };
 
     const imageFileToDataUrl = async (file) => {
       const proc = await compressImage(file);
-      return `data:${proc.type || 'image/jpeg'};base64,${await fileToBase64(proc)}`;
+      return `data:${proc.type||'image/jpeg'};base64,${await fileToBase64(proc)}`;
     };
 
     const extractPdfText = async (file) => {
       if (!window.pdfjsLib) throw new Error('pdf.js not loaded.');
-      const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+      const pdf   = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
       const pages = [];
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        pages.push(content.items.map((item) => item.str).join(' '));
+        pages.push(content.items.map((it) => it.str).join(' '));
       }
       return pages.join('\n\n');
     };
 
     const renderPdfPagesAsImages = async (file, maxPages = 4) => {
-      const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+      const pdf    = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
       const images = [];
       for (let i = 1; i <= Math.min(pdf.numPages, maxPages); i++) {
         const page = await pdf.getPage(i);
-        const baseViewport = page.getViewport({ scale: 1 });
-        const scale = Math.min(2, 1400 / baseViewport.width);
-        const viewport = page.getViewport({ scale });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-        images.push(canvas.toDataURL('image/jpeg', 0.82));
+        const bv   = page.getViewport({ scale: 1 });
+        const vp   = page.getViewport({ scale: Math.min(2, 1400/bv.width) });
+        const c    = document.createElement('canvas');
+        c.width    = Math.floor(vp.width); c.height = Math.floor(vp.height);
+        await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+        images.push(c.toDataURL('image/jpeg', 0.82));
       }
       return images;
     };
 
-    const callExtractionApi = async ({ text = '', imageDataUrls = [], sourceName = '' }) => {
+    const callExtractionApi = async ({ text='', imageDataUrls=[], sourceName='' }) => {
       const categoryList = state.categories.join(', ');
-      const systemPrompt = `You are an expert at extracting service provider contact information from documents. Extract ALL companies/service providers mentioned and return ONLY a valid JSON object — no markdown, no explanation — in this exact structure:
-{"companies":[{"name":"Company Name","category":"one of: ${categoryList}","address":"full address","generalPhone":"main phone","generalEmail":"main email","website":"website URL","description":"brief services description","pics":[{"name":"Contact Name","position":"Job Title","phone":"direct phone","email":"direct email"}]}]}
-If no companies are found, return {"companies":[]}.`;
-
+      const sysPrompt = `You are an expert at extracting service provider contact information from documents. Extract ALL companies/service providers mentioned and return ONLY a valid JSON object — no markdown, no explanation — in this exact structure:\n{"companies":[{"name":"Company Name","category":"one of: ${categoryList}","address":"full address","generalPhone":"main phone","generalEmail":"main email","website":"website URL","description":"brief services description","pics":[{"name":"Contact Name","position":"Job Title","phone":"direct phone","email":"direct email"}]}]}\nIf no companies are found, return {"companies":[]}.`;
       const userContent = [];
       if (imageDataUrls.length) {
-        userContent.push({ type: 'text', text: `Extract all service provider contact information from this document: ${sourceName}` });
-        imageDataUrls.forEach((url) => userContent.push({ type: 'image_url', image_url: { url, detail: 'high' } }));
+        userContent.push({ type:'text', text:`Extract all service provider contact information from this document: ${sourceName}` });
+        imageDataUrls.forEach((url) => userContent.push({ type:'image_url', image_url:{ url, detail:'high' } }));
       } else {
-        userContent.push({ type: 'text', text: `Extract service provider contacts from this document (${sourceName}):\n\n${text.substring(0, 15000)}` });
+        userContent.push({ type:'text', text:`Extract service provider contacts from this document (${sourceName}):\n\n${text.substring(0,15000)}` });
       }
-
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
-        body: JSON.stringify({
-          model: OPENAI_MODEL,
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }],
-          temperature: 0.1, max_tokens: 4000, response_format: { type: 'json_object' }
-        })
+        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${OPENAI_API_KEY}` },
+        body: JSON.stringify({ model:OPENAI_MODEL, messages:[{ role:'system',content:sysPrompt },{ role:'user',content:userContent }], temperature:0.1, max_tokens:4000, response_format:{ type:'json_object' } })
       });
       const raw = await res.text();
       let data = {};
-      try { data = raw ? JSON.parse(raw) : {}; } catch (e) {}
-      if (!res.ok) throw new Error(data.error?.message || `OpenAI ${res.status}: ${raw.substring(0, 120)}`);
+      try { data = raw ? JSON.parse(raw) : {}; } catch {}
+      if (!res.ok) throw new Error(data.error?.message || `OpenAI ${res.status}: ${raw.substring(0,120)}`);
       const content = data.choices?.[0]?.message?.content || '{}';
       let parsed = {};
-      try { parsed = JSON.parse(content); } catch (e) {}
+      try { parsed = JSON.parse(content); } catch {}
       const usage = data.usage || {};
-      const inputTokens  = usage.prompt_tokens     || 0;
-      const outputTokens = usage.completion_tokens || 0;
-      // gpt-4o-mini rates × 50: $7.50/1M input, $30.00/1M output
-      const costUsd = (inputTokens * 0.0000075) + (outputTokens * 0.000030);
+      const inputTokens = usage.prompt_tokens||0, outputTokens = usage.completion_tokens||0;
+      const costUsd = (inputTokens*0.0000075) + (outputTokens*0.000030);
       return {
         companies: Array.isArray(parsed.companies) ? parsed.companies : [],
-        usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens, costUsd, model: OPENAI_MODEL, sourceName }
+        usage: { inputTokens, outputTokens, totalTokens: inputTokens+outputTokens, costUsd, model:OPENAI_MODEL, sourceName }
       };
     };
 
     const extractInfoFromFile = async (file) => {
-      const name = file.name.toLowerCase();
-      if (/\.(jpg|jpeg|png|gif|webp)$/.test(name)) return callExtractionApi({ imageDataUrls: [await imageFileToDataUrl(file)], sourceName: file.name });
-      if (name.endsWith('.pdf')) {
+      const n = file.name.toLowerCase();
+      if (/\.(jpg|jpeg|png|gif|webp)$/.test(n)) return callExtractionApi({ imageDataUrls:[await imageFileToDataUrl(file)], sourceName:file.name });
+      if (n.endsWith('.pdf')) {
         const text = await extractPdfText(file);
-        if (text.trim()) return callExtractionApi({ text, sourceName: file.name });
-        return callExtractionApi({ imageDataUrls: await renderPdfPagesAsImages(file), sourceName: file.name });
+        if (text.trim()) return callExtractionApi({ text, sourceName:file.name });
+        return callExtractionApi({ imageDataUrls:await renderPdfPagesAsImages(file), sourceName:file.name });
       }
-      if (/\.(xls|xlsx)$/.test(name)) throw new Error('Excel not supported. Export to CSV or PDF.');
-      if (/\.(doc|docx)$/.test(name)) {
-        if (!name.endsWith('.docx')) throw new Error('Old .doc not supported. Save as .docx or PDF.');
+      if (/\.(xls|xlsx)$/.test(n)) throw new Error('Excel not supported. Export to CSV or PDF.');
+      if (/\.(doc|docx)$/.test(n)) {
+        if (!n.endsWith('.docx')) throw new Error('Old .doc not supported. Save as .docx or PDF.');
         const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-        if (!result.value || !result.value.trim()) throw new Error('Could not read Word file.');
-        return callExtractionApi({ text: result.value, sourceName: file.name });
+        if (!result.value?.trim()) throw new Error('Could not read Word file.');
+        return callExtractionApi({ text:result.value, sourceName:file.name });
       }
-      return callExtractionApi({ text: await file.text(), sourceName: file.name });
+      return callExtractionApi({ text:await file.text(), sourceName:file.name });
     };
 
     const logApiUsage = async (usage, uploader) => {
       try {
-        await sb('audit_log', {
-          method: 'POST',
-          body: JSON.stringify({
-            user_name: uploader || 'Unknown',
-            action: 'OPENAI_USAGE',
-            details: JSON.stringify({
-              file: usage.sourceName,
-              model: usage.model,
-              input_tokens: usage.inputTokens,
-              output_tokens: usage.outputTokens,
-              total_tokens: usage.totalTokens,
-              cost_usd: usage.costUsd
-            })
-          })
-        });
+        await sb('audit_log', { method:'POST', body:JSON.stringify({
+          user_name:uploader||'Unknown', action:'OPENAI_USAGE',
+          details:JSON.stringify({ file:usage.sourceName, model:usage.model, input_tokens:usage.inputTokens, output_tokens:usage.outputTokens, total_tokens:usage.totalTokens, cost_usd:usage.costUsd })
+        }) });
       } catch (e) { console.warn('Usage log failed', e); }
     };
 
     const setProcessing = (items) => {
       $('processingPanel').classList.toggle('hidden', !items.length);
-      $('processingList').innerHTML = items.map((item) =>
-        `<div class="rounded border border-slate-200 bg-white px-3 py-2"><strong>${escapeHtml(item.name)}</strong><span class="ml-2 text-slate-500">${escapeHtml(item.status)}</span></div>`).join('');
+      $('processingList').innerHTML = items.map((item) => `
+        <div class="proc-item">
+          <strong style="color:var(--text)">${escapeHtml(item.name)}</strong>
+          <span style="color:var(--text-3);font-size:12px">${escapeHtml(item.status)}</span>
+        </div>`).join('');
     };
 
     const handleFiles = async (fileList) => {
       const uploader = $('uploaderName').value.trim();
-      const site = $('siteSelect').value.trim();
+      const selectedSites = multiSiteInstances['uploadSite'].getSelected();
       if (!uploader) return showBanner('Enter your BM name first.', 'error');
-      if (!site) return showBanner('Select a site first.', 'error');
+      if (!selectedSites.length) return showBanner('Select at least one site first.', 'error');
+      const siteStr = sitesToStr(selectedSites);
 
       const files = Array.from(fileList);
-      const processing = files.map((f) => ({ name: f.name, status: 'Processing…' }));
+      const processing = files.map((f) => ({ name:f.name, status:'Processing…' }));
       setProcessing(processing);
       let addedCompanies = 0, addedPics = 0;
 
@@ -977,27 +1423,23 @@ If no companies are found, return {"companies":[]}.`;
           const { companies, usage } = await extractInfoFromFile(file);
           await logApiUsage(usage, uploader);
           for (const company of companies) {
-            const saved = await sb('companies', {
-              method: 'POST',
-              body: JSON.stringify({
-                name: company.name || '', category: company.category || 'Other',
-                address: company.address || '', general_phone: company.generalPhone || '',
-                general_email: company.generalEmail || '', website: company.website || '',
-                description: company.description || '', site, uploaded_by: uploader, source_file: file.name
-              })
-            });
+            const saved = await sb('companies', { method:'POST', body:JSON.stringify({
+              name:company.name||'', category:company.category||'Other',
+              address:company.address||'', general_phone:company.generalPhone||'',
+              general_email:company.generalEmail||'', website:company.website||'',
+              description:company.description||'', site:siteStr, uploaded_by:uploader, source_file:file.name
+            }) });
             const row = saved && saved[0];
             if (!row) continue;
-            const pics = (company.pics || []).filter((p) => p.name || p.phone || p.email).map((p) => ({
-              company_id: row.id, name: p.name || '', position: p.position || '',
-              phone: p.phone || '', email: p.email || ''
+            const pics = (company.pics||[]).filter((p) => p.name||p.phone||p.email).map((p) => ({
+              company_id:row.id, name:p.name||'', position:p.position||'', phone:p.phone||'', email:p.email||''
             }));
-            if (pics.length) { await sb('pics', { method: 'POST', body: JSON.stringify(pics) }); addedPics += pics.length; }
+            if (pics.length) { await sb('pics', { method:'POST', body:JSON.stringify(pics) }); addedPics += pics.length; }
             addedCompanies++;
           }
-          processing[i].status = `Done — ${companies.length} companies added`;
+          processing[i].status = `✓ ${companies.length} companies added`;
         } catch (err) {
-          processing[i].status = `Error: ${err.message}`;
+          processing[i].status = `✗ ${err.message}`;
         }
         setProcessing(processing);
       }
@@ -1011,49 +1453,58 @@ If no companies are found, return {"companies":[]}.`;
 
     // ── EXPORT CSV ───────────────────────────────────────────────
     const exportCSV = () => {
-      const rows = [['Company Name','Category','Address','General Phone','General Email','Website','Description','PIC Name','PIC Position','PIC Phone','PIC Email','Site','Uploaded By','Date Added','Comments']];
+      const rows = [['Company Name','Category','Sites','Address','General Phone','General Email','Website','Description','PIC Name','PIC Position','PIC Phone','PIC Email','Uploaded By','Date Added','Comments']];
       visibleCompanies().forEach((c) => {
-        const pics = (state.picsByCompany[c.id] || []).filter((p) => !p.deleted);
-        const base = [c.name,c.category,c.address,c.generalPhone,c.generalEmail,c.website,c.description];
-        const tail = [c.site,c.uploadedBy,new Date(c.dateAdded).toLocaleString(),c.comments || ''];
-        if (pics.length) pics.forEach((p) => rows.push([...base,p.name,p.position,p.phone,p.email,...tail]));
+        const pics = (state.picsByCompany[c.id]||[]).filter((p) => !p.deleted);
+        const base = [c.name, c.category, c.site, c.address, c.generalPhone, c.generalEmail, c.website, c.description];
+        const tail = [c.uploadedBy, new Date(c.dateAdded).toLocaleString(), c.comments||''];
+        if (pics.length) pics.forEach((p) => rows.push([...base, p.name, p.position, p.phone, p.email, ...tail]));
         else rows.push([...base,'','','','',...tail]);
       });
-      const csv = rows.map((row) => row.map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
-      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-      const a = document.createElement('a'); a.href = url;
-      a.download = `service_providers_${new Date().toISOString().split('T')[0]}.csv`;
+      const csv = rows.map((row) => row.map((v) => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `service_providers_${new Date().toISOString().split('T')[0]}.csv`;
       a.click(); URL.revokeObjectURL(url);
     };
 
-    // ── EVENT LISTENERS ──────────────────────────────────────────
+    // ── EVENTS ───────────────────────────────────────────────────
     $('refreshBtn').addEventListener('click', loadAllData);
     $('settingsBtn').addEventListener('click', openSettings);
     $('addSiteBtn').addEventListener('click', addSite);
 
-    // Login modal
+    // Manual add
+    $('addCompanyManualBtn').addEventListener('click', openAddCompanyManual);
+    $('addCompanyCancelBtn').addEventListener('click', () => closeModal('addCompanyModal'));
+    $('addCompanyCancelBtn2').addEventListener('click', () => closeModal('addCompanyModal'));
+    $('manualAddPicBtn').addEventListener('click', manualAddPicToList);
+    $('manualCompanySaveBtn').addEventListener('click', saveManualCompany);
+    $('manualPicName').addEventListener('keydown', (e) => e.key === 'Enter' && manualAddPicToList());
+
+    // Login
     $('loginSubmitBtn').addEventListener('click', attemptLogin);
     $('loginCancelBtn').addEventListener('click', () => closeModal('loginModal'));
+    $('loginCancelBtn2').addEventListener('click', () => closeModal('loginModal'));
     $('loginPass').addEventListener('keydown', (e) => e.key === 'Enter' && attemptLogin());
 
-    // Settings panel
+    // Settings
     $('settingsCloseBtn').addEventListener('click', () => closeModal('settingsPanel'));
-    $('settingsLogoutBtn').addEventListener('click', () => { state.adminLoggedIn = false; closeModal('settingsPanel'); showBanner('Logged out of Settings.'); });
+    $('settingsLogoutBtn').addEventListener('click', () => { state.adminLoggedIn = false; closeModal('settingsPanel'); showBanner('Logged out.'); });
     $('exportCsvBtn').addEventListener('click', exportCSV);
     $('tabCostBtn').addEventListener('click', () => switchTab('cost'));
     $('tabLogBtn').addEventListener('click', () => switchTab('log'));
 
-    // Edit company modal
+    // Edit company
     $('editCompanySaveBtn').addEventListener('click', saveEditCompany);
     $('editCompanyCancelBtn').addEventListener('click', () => closeModal('editCompanyModal'));
     $('editCompanyCancelBtn2').addEventListener('click', () => closeModal('editCompanyModal'));
 
-    // Edit PIC modal
+    // Edit PIC
     $('editPicSaveBtn').addEventListener('click', saveEditPic);
     $('editPicCancelBtn').addEventListener('click', () => closeModal('editPicModal'));
     $('editPicCancelBtn2').addEventListener('click', () => closeModal('editPicModal'));
 
-    // Add PIC modal
+    // Add PIC
     $('addPicSaveBtn').addEventListener('click', saveAddPic);
     $('addPicCancelBtn').addEventListener('click', () => closeModal('addPicModal'));
     $('addPicCancelBtn2').addEventListener('click', () => closeModal('addPicModal'));
@@ -1065,10 +1516,10 @@ If no companies are found, return {"companies":[]}.`;
     // File upload
     $('dropZone').addEventListener('click', () => $('fileInput').click());
     $('fileInput').addEventListener('change', (e) => e.target.files.length && handleFiles(e.target.files));
-    $('dropZone').addEventListener('dragover', (e) => { e.preventDefault(); $('dropZone').classList.add('border-blue-600'); });
-    $('dropZone').addEventListener('dragleave', () => $('dropZone').classList.remove('border-blue-600'));
+    $('dropZone').addEventListener('dragover', (e) => { e.preventDefault(); $('dropZone').classList.add('drag-over'); });
+    $('dropZone').addEventListener('dragleave', () => $('dropZone').classList.remove('drag-over'));
     $('dropZone').addEventListener('drop', (e) => {
-      e.preventDefault(); $('dropZone').classList.remove('border-blue-600');
+      e.preventDefault(); $('dropZone').classList.remove('drag-over');
       if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
     });
 
@@ -1076,8 +1527,14 @@ If no companies are found, return {"companies":[]}.`;
     $('searchInput').addEventListener('input', (e) => { state.search = e.target.value; renderCompanies(); });
     $('categoryFilter').addEventListener('change', (e) => { state.category = e.target.value; renderCompanies(); });
 
+    // ── INIT ─────────────────────────────────────────────────────
+    // Build multi-site selectors
+    buildMultisite('uploadSite', 'uploadSiteTrigger', 'uploadSiteDropdown', 'uploadSitePlaceholder');
+    buildMultisite('manualSite', 'manualSiteTrigger', 'manualSiteDropdown', 'manualSitePlaceholder');
+    buildMultisite('editSite',   'editSiteTrigger',   'editSiteDropdown',   'editSitePlaceholder');
+
     loadAllData();
   </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
